@@ -1,11 +1,15 @@
 # Jispy
-Jispy is a recursive descent parser for a strict subset of Javascript.  
-It is written in pure Python, distributed as a single file and highly extendable.
+Jispy is recursive descent (parser) interpreter for a strict subset of Javascript.  
+It is written purely in Python, distributed as a single file and highly extendable.
 
-**Note:** This document and documents linked herein are work in progress.
+See [LICENSE.md](https://github.com/sumukhbarve/jispy/blob/master/LICENSE.md) and [DEDICATION.md](https://github.com/sumukhbarve/jispy/blob/master/DEDICATION.md) for project license and dedication.
+
+**Note:** This document and each document linked herein is work in progress.
 
 The subset of JavaScript that Jispy interprets is fondly called [LittleJ](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).  
 Please at least skim it before reading further.
+
+**Installation:** Simply include jispy.py in your project directory.
 
 Jispy comes armed with a console and an API. While the API provides far greater control, the console is great for getting started.
 

@@ -1,4 +1,4 @@
-## LittleJ
+# LittleJ
 
 LittleJ (also **LJ**) is a pet name for the subset of JavaScript that Jispy interprets.
 
@@ -13,6 +13,8 @@ It is a <u>**strict subset of JavaScript**</u>, strict in two senses:
 However, keep in mind that:
 
 - Every valid JS program need not be a valid LJ program.
+
+**Note:** This document and each document linked herein is work in progress. 
 
 LittleJ borrows heavily from [Douglas Crockford's JS Conventions](http://javascript.crockford.com/code.html).  
 In many cases, LittleJ is infact stricter (than [JSLint](http://jslint.com/)). Only in a few cases, it isn't.
@@ -235,4 +237,3 @@ writeln(factorial(n)); // prints 720
 ```
 
 More examples coming soon.
-
