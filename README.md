@@ -1,66 +1,57 @@
 # Jispy
 Jispy is a recursive descent parser for a strict subset of Javascript.  
-It is written purely in Python; and is distributed as a single file.
+It is written in pure Python, distributed as a single file and highly extendable.
 
-**Note:** This document is work in progress. New material shall soon be added.
+**Note:** This document and documents linked herein are work in progress.
 
-## Inspiration
+The subset of JavaScript that Jispy interprets is fondly called [LittleJ](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).  
+Please at least skim it before reading further.
 
-Jispy has two primary influences:
+Jispy comes armed with a console and an API. While the API provides far greater control, the console is great for getting started.
 
-+ [**Lispy**](http://norvig.com/lispy.html) - (A (Lisp) Interpreter (in Python)) by [**Peter Norvig**](http://norvig.com/).
-+ [**Javascript: The Good Pargs**](http://www.amazon.com/exec/obidos/ASIN/0596517742/wrrrldwideweb), by [**Douglas Crockfork**](http://www.crockford.com/).
 
-This project is respectfully dedicated to them. (Hope they don't mind.)
+### The `console()`
+Let's jump right in:
+```py
+ >>> from jispy import console
+ >>> console()
+ jispy> var h = 'Hello World', arr = ['I', 'am', 'an', 'array'], obj = {}; 
+ jispy> writeln(h);
+ Hello World
+ jispy> writeln(type(arr) + ' is not the same as ' + type(obj));
+ array is not the same as object
+ jispy> writeln(1 + 2 + 3 === 3 + 2 + 1);
+ true
+ jispy> writeln(1 + 2 + 3 != 1 + 1);
+ SyntaxError: unexpected token !=
+ jispy> writeln('bye!!');
+ bye!!
+```
 
-## LittleJ
+Four functions come builtin with (the standard configuration of) Jispy:
 
-LittleJ is the subset of JavaScript which Jispy interprets. It is a strict subset of JavaScript; strict in two senses:
++ `write()`, `writeln()`, `type()`, `keys()`, `str()`, `len()`.  
+Each accepts a single argument. The last two are like their python-versions.  
+`keys()` is equivalent to `Object.keys()` in JS or `dict.keys()` in Python.
 
-+ LittleJ is a proper syntactic and semantic subset of JavaScript.
-+ LittleJ enforces far stricter rules than JavaScript. Its less forgiving.
+To enter multiple lines of code, end each line with a tab.  
+Here's an example with `for`:
+```python
+ >>> jispy.console()
+ jispy> var obj = {a: 'apple', b: 'ball', c: 'cat'}, i = 0, k = 0;
+ jispy> for (i = 0; i < len(obj); i += 1) {      
+ ......     k = keys(obj)[i];    
+ ......     writeln(k + ' for ' + obj[k]);       
+ ...... }
+ a for apple
+ c for cat
+ b for ball
+```
 
-The following is a **brief** overview of LittleJ. Philosophy is not discussed herein.
+And oh yes! Objects have `len()` in LittleJ.  
+`len(obj)` equivalent to `Object.keys(obj).length` in JavaScript.
 
-+ There are **no implied globals**.
-    - All variables must be defined before use.
-+ There may be **at most one var statement per scope.**
-    - If present, `var` must be the first token within that scope.
-+ **Functions are first class citizens**.
-    - However, function declarations are excluded.
-    - All functions must be defined via function expressions.
-    - **Closures are fully supported.**
-+ `==`, `!=`, and **bitwise operators** are **NOT** included.
-    - Use `===` and `!==` instead.
-    - Logical operators `&&` and `||` are supported.
-+ No `undefined` and no `arguments`.
-    - All variables must be initialized with a value.
-    - Too many or too few arguments may not be passed to a function.
-    - **All functions must have a return value.**
-+ `NaN`, `Infinity` and `null` are excluded.
-    - Multiplying a number by a string results in a `TypeError`.
-    - `ZeroDivisionError` is accordingly introduced.
-+ **Much stricter type checking.**
-    - One can't add numbers to strings (without explicitly converting either).
-    - Removing `NaN` makes the language far less permissive.
-+ A more meaningful `type()` function replaces the `typeof` operator.
-    - `type(x)` may be one of: 
-        - `"boolean"`, `"number"`, `"string"`, `"array"`, `"object"`.
-    - It may **not** be `"undefined"` or `"null"`. (Those are excluded.)
-+ No `this` and no `new`. There are no JS-like constructors.
-    - However, **objects and object literals are included.**
-    - Similary, **arrays and array literals are included.**
-+ There's no `prototype` and no `in`.
-    - However, prototypal inheritance ***is*** possible.
-    - Objects don't inherit properties form the prototype chain (as there isn't one.)
-    - Thus, `hasOwnProperty` is not required (and is excluded).
-+ The `switch` statement is excluded.
-+ `if`, the `else`-`if` ladder, `while`, the conventional-`for` and `break` statements are supported.
-
-The above covers most of LittleJ.  
-However, there are a few other caveats which we shall get to later.
-
-## A LittleJ Program
+### The API
 
 Consider the following LittleJ program for computing factorial:
 ```javascript
@@ -69,22 +60,7 @@ var n = 6, factorial = function (n) {
     return n * factorial(n - 1);
 };
 writeln(factorial(n)); // prints 720
-// writeln() is an inbuilt function (in the standard version) of Jispy.
-// It may be disable by the end user or re-assigned via this Python API.
 ```
-
-Four functions come inbuilt (in the standard configuration) with Jispy:
-
-+ `write()`, `writeln()`, `type()`, `keys()`, `str()`, `len()`.  
-Each accepts a single argument. The last two are like their python-versions.  
-`keys()` is equivalent to `Object.keys()` in JS or `dict.keys()` in Python.
-
-## Using Jispy:
-
-Jispy has an API and a console.  
-The console is fun, but the API lets you do much more.
-
-### The API
 
 Assuming that the above LittleJ program for computing factorial has been saved as a python-string in the variable `factoProg`, the following python code would execute it.
 ```python
@@ -107,6 +83,11 @@ A `Runtime` is a wrapper around a global environment. It allows you to run multi
 
 if `write` is set to `None`, inbuilts `write` and `writeln` shall not be make available.
 
+#### More about `console()`
+
+Each call to Jispy's `console()` uses a **single** `Runtime`, wherein each input line (or lines) is executed as an independent program. But since the `Runtime` is common, later programs have access to variables defined in earlier programs.
+
+
 ### Adding Natives
 
 Functions such as `writeln` may be added via `Runtime`'s `addNatives` method.
@@ -124,42 +105,6 @@ rt.run(demoProgo) # prints 5040
 ```
 
 Please note that the LittleJ program may redefine all natives. And a native variable may be initialized (as a fresh variable) in any non-global environment.
-
-### The Python `console()`
-```python
- >>> from jispy import console
- >>> console()
- jispy> var h = 'Hello World', arr = ['I', 'am', 'an', 'array'], obj = {}; 
- jispy> writeln(h);
- Hello World
- jispy> writeln(type(arr) + ' is not the same as ' + type(obj));
- array is not the same as object
- jispy> writeln(1 + 2 + 3 === 3 + 2 + 1);
- true
- jispy> writeln(1 + 2 + 3 != 1 + 1);
- SyntaxError: unexpected token !=
- jispy> writeln('bye!!');
- bye!!
-```
-
-Each call to `console()` uses a single instance of `Runtime`. Each line of input is executed as an independent program, in a **common** `Runtime`. This allows us to define the variable `h` and print it using `writeln(h)` on separate lines of input.
-
-To enter multiple lines of code, end each line with a tab.  
-Here's an example with `for`:
-```python
- >>> jispy.console()
- jispy> var obj = {a: 'apple', b: 'ball', c: 'cat'}, i = 0, k = 0;
- jispy> for (i = 0; i < len(obj); i += 1) {      
- ......     k = keys(obj)[i];    
- ......     writeln(k + ' for ' + obj[k]);       
- ...... }
- a for apple
- c for cat
- b for ball
-```
-
-And oh yes! Objects have `len()` in LittleJ.  
-`len(obj)` equivalent to `Object.keys(obj).length` in JavaScript.
 
 More will soon be added. As already noted, THIS IS WORK IN PROGRESS.
 There are more caveats, but error messages should be helpful enough.
