@@ -124,7 +124,7 @@ def lex(s):
 				raise SyntaxError('unexpected refinement ' + x);
 			# otherwise...
 			poken = tokens[-1]; # previous token
-			if poken not in [sym('}'), sym(']')]:
+			if poken not in [sym('}'), sym(']'), sym(')')]:
 				raise SyntaxError('unexpected token ' + x);
 			# otherwise...
 			splitLi = x[1 : ].split('.');
@@ -474,6 +474,8 @@ def yacc(tokens):
 	
 	def parseExpStmt(stmt):
 		"Helps yacc(..) parse exp-stmts like `print('Hi!');`"
+		if stmt[0] is sym('function'):
+			raise SyntaxError('unexpected token function (wrap it up in parenthesis)');
 		tree.append(['exp-stmt', parseExp(stmt)]);
 		return None;	
 		
@@ -725,7 +727,7 @@ def run(tree, env, maxLoopTime=None):
 			except ReturnStatement as r:
 				inter = r.args[0];
 				return inter;	# intermediate result
-			raise RuntimeError('non-returning function');
+			raise TypeError('non-returning function');
 		
 		def invokePyFunction(func, args):
 			"Helps invoke python's function."
