@@ -15,21 +15,33 @@ Jispy comes armed with a console and an API. While the API provides far greater 
 
 
 ### The `console()`
-Let's jump right in:
+
+Let's jump right in.
+
 ```py
  >>> from jispy import console
- >>> console()
- jispy> var h = 'Hello World', arr = ['I', 'am', 'an', 'array'], obj = {}; 
- jispy> writeln(h);
- Hello World
- jispy> writeln(type(arr) + ' is not the same as ' + type(obj));
- array is not the same as object
- jispy> writeln(1 + 2 + 3 === 3 + 2 + 1);
+ >>> console()  # continued...
+ jispy> "Hello World!";
+ Hello World!
+ jispy> var obj = {i: 'am', a: 'object!'}, arr = ['I', 'am', 'an', 'array'];
+ jispy> obj.i === arr[1];
  true
- jispy> writeln(1 + 2 + 3 != 1 + 1);
- SyntaxError: unexpected token !=
- jispy> writeln('bye!!');
- bye!!
+ jispy> type(obj) === type(arr);
+ false
+ jispy> 'Because type() of an array is ' + type(arr);
+ Because type() of an array is array
+ jispy> var f = function (n) { if (n === 1) { return 1; } return n * f(n-1); };
+ jispy> f(6); // Should be 720...
+ 720
+ jispy> var foo = function () { return foo; }; // functions are first class!
+ jispy> foo === foo();
+ true
+ jispy> "Hit Crtl-D to exit."
+ SyntaxError: expected ;
+ jispy> "Dough.... :P"; // LittleJ is particular about semicolons;
+ Dough.... :P
+ jispy> "Bye!!";
+ Bye!! 
 ```
 
 Four functions come builtin with (the standard configuration of) Jispy:
@@ -85,7 +97,7 @@ A `Runtime` is a wrapper around a global environment. It allows you to run multi
 
 `maxLoopTime` and `maxDepth` both default to `None`. Unless changed to a positive value, there shall be no checks on infinite-looping and/or infinite-recursion.
 
-if `write` is set to `None`, inbuilts `write` and `writeln` shall not be make available.
+if `write` is set to `None`, inbuilts `write` and `writeln` shall not be made available.
 
 #### More about `console()`
 
@@ -100,7 +112,6 @@ It accepts a single dictionary as input. The key-value pairs are added to the gl
 For example, let's add a native version of the `factorial` function and set native `inbuilt_num` to `7.0` :
 ```python
 from jispy import Runtime
-inbuilt_num = 7.0
 factorial = lambda n: 1.0 if n <= 1.0 else n * factorial(n-1)
 rt = Runtime(maxLoopTime = 13, maxDepth = 100)
 rt.addNatives({'factorial' : factorial, 'inbuilt_num' : 7.0})

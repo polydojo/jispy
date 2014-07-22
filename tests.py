@@ -209,25 +209,38 @@ tests = [
 	#		writeln(k + ' for ' + obj[k]);
 	#	}
 	#''',
-	''' //Test-19: going through a object via for loop;
+	''' // Test-19: going through a object via for loop;
 		var obj = {t : true},
 			i = 0, k = 0, flag = true;
 		for (i = 0; i < len(obj); i += 1) {
 			k = keys(obj)[i];
 			writeln('19. ' + str(obj[k]));
 		}
+	''',
+	#	-----------------------------------------------------
+	''' // Test-20: testing multiple assignments in for loop (assignment clause)
+		var i = false, j = false, flag = true;
+		for (i = 1, j = 1; i <= 10; i += 1, j += 1) {
+		    if (i !== j) {
+		    	flag = false;
+		    	break;
+			}
+		}
+		writeln('20. ' + str(flag));
 	'''
 ];
 
-j = 0;
+j = -1;
 for prog in tests:
+	j += 1;
+	#if j != 20: continue;
 	#print 'test     -->\n', t, '\n';
 	tokens = lex(prog);
 	#print 'tokens   -->\n', tokens, '\n';
 	tree = yacc(tokens);
 	#print 'tree 	-->\n', tree, '\n';
 	rt = Runtime(maxLoopTime=13, maxDepth=100);
-	rt.run(prog);
+	rt.run('', tree = tree);								# rt.run(prog) would work, but tree would be wastefully recomputed
 	#if j == 8: break;
 	j += 1;
 	#break;

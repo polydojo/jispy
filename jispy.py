@@ -9,6 +9,14 @@ import json;	 	# used repr of arrs and objs
 import inspect;
 import sys;
 isa = isinstance;
+debugOn = False;
+
+def debug(*args):
+	"Helps with debugging. Easily disabled by redefinition."
+	if not debugOn: return;
+	out = '\n';
+	for a in args: out += str(a) + '\t'
+	print out;
 
 #############################################################
 #					LEXICAL ANALYSIS						#
@@ -62,6 +70,14 @@ map(badsym, '== != << >> *= /= %= ++ --'.split());
 map(badsym, uKeywords);
 #############################################################
 
+class LJErr(Exception): pass;
+class LJSyntaxErr(LJErr): pass;
+class LJTypeErr(LJErr): pass;
+class LJRuntimeErr(LJErr): pass;
+class LJReferenceErr(LJErr): pass;
+class LJKeyErr(LJErr): pass;
+class LJIndexErr(LJErr): pass;
+
 def isNameLike(s):
 	"Returns if a token is name-LIKE. 'if' IS name like."
 	return re.findall(r'[a-z]\w*', s) == [s] and s[-1] != '_';
@@ -82,6 +98,7 @@ def isDecimal(s):
 	
 def lex(s):
 	"Breaks input into a list of tokens. (Lexical Analysis)"
+	debug('lex(..)');
 	spacer = [
 		# Introducing spaces:
 		('=', ' = '), (',', ' , '), (';', ' ; '),
@@ -115,17 +132,17 @@ def lex(s):
 				toAppend = [sym('['), s, sym(']')];
 				map(tokens.append, toAppend);
 			else:
-				raise SyntaxError('illegal refinement ' + x);
+				raise LJSyntaxErr('illegal refinement ' + x);
 						
 		if x[-1] == '.':
-			raise SyntaxError('unexpected trailing . (dot) ' + x);		# TODO: Support trailing dots.
+			raise LJSyntaxErr('unexpected trailing . (dot) ' + x);		# TODO: Support trailing dots.
 		elif x[0] == '.':
 			if tokens == []:
-				raise SyntaxError('unexpected refinement ' + x);
+				raise LJSyntaxErr('unexpected refinement ' + x);
 			# otherwise...
 			poken = tokens[-1]; # previous token
 			if poken not in [sym('}'), sym(']'), sym(')')]:
-				raise SyntaxError('unexpected token ' + x);
+				raise LJSyntaxErr('unexpected token ' + x);
 			# otherwise...
 			splitLi = x[1 : ].split('.');
 			map(subscriptify, splitLi);
@@ -136,14 +153,14 @@ def lex(s):
 				tokens.append(Name(baseId))
 				map(subscriptify, splitLi[1 : ]);
 			else:
-				raise SyntaxError('illegal identifier ' + baseId);
+				raise LJSyntaxErr('unexpected token ' + baseId);
 	
 	def atomizeNS(x):
 		"Identify (& return) bools, numbers, st & names."
 		if x in uKeywords:
-			raise SyntaxError('unexpected keyword ' + x);
+			raise LJSyntaxErr('unexpected keyword ' + x);
 		elif x in badsym:
-			raise SyntaxError('unexpected token ' + x);
+			raise LJSyntaxErr('unexpected token ' + x);
 		elif x in sym: 
 			tokens.append(sym(x));
 		elif isValidName(x):
@@ -153,12 +170,12 @@ def lex(s):
 				tmp = float(x);
 				if isDecimal(x): tokens.append(tmp);
 				else:
-					raise SyntaxError('illegal number ' + x);
+					raise LJSyntaxErr('illegal (octal) number ' + x);
 			except ValueError:								# SyntaxError is left uncaught.
 				if '.' in x: 
 					handleDot(x);
 				else:
-					raise SyntaxError('unexpected token ' + x);
+					raise LJSyntaxErr('unexpected token ' + x);
 	
 	def lexNS(code):
 		"Tokenizes a non-string, i.e. un-quoted code snippet."
@@ -207,7 +224,7 @@ def gmb(seq, i): # Get Matching (Closing) Bracket
 		if seq[j] == left: count += 1;
 		elif seq[j] == right: count -= 1;
 		if count == 0: return j;
-	raise SyntaxError('unbalanced bracket ' + left);
+	raise LJSyntaxErr('unbalanced bracket ' + left);
 
 def topSplit(li, syms):											# Consider: `add(1, sub(2, 3));`
 	"Splits input list on the TOP-LEVEL non-bracket symbol(s)."	# The comma right after 2 is not a top-level comma. (Its nested.)
@@ -232,6 +249,8 @@ def topSplit(li, syms):											# Consider: `add(1, sub(2, 3));`
 def topIndex(li, j, symbo):	# error thrower
 	"Gives index of TOP-LEVEL occurence of symbo, starting at j." 
 	oBrackets = [sym('('), sym('{'), sym('[')];
+	if symbo in oBrackets:
+		raise Exception('');	# internal error
 	while j < len(li):
 		if li[j] in oBrackets:
 			j = gmb(li, j);	# ignore semis in bracket pairs
@@ -239,7 +258,7 @@ def topIndex(li, j, symbo):	# error thrower
 			return j;
 		else:
 			j += 1;
-	raise SyntaxError('expected ' + symbo);
+	raise LJSyntaxErr('expected ' + symbo);
 
 #############################################################
 
@@ -255,7 +274,7 @@ class Function(object):		# for holding function values	# Functions can be comple
 def yacc(tokens):
 	"Builds an AST from a list of tokens. (Syntactic Analysis)"
 	tree = []; # AST (Abstract Syntax Tree)
-	
+	debug('yacc(..)', tokens);
 	def parseFunction(expLi, k):							# form:		... function ( a , b )  { ... } ...
 		"Helps parseExp() to parse function expressions."	# indices:		k		 lp		 rp lc	  rc
 		try:
@@ -273,7 +292,7 @@ def yacc(tokens):
 				else: assert p == sym(',');
 		except (ValueError, AssertionError):
 			#print 'func ExpLI = ', expLi;
-			raise SyntaxError('bad function literal');
+			raise LJSyntaxErr('bad function literal');
 		bodyTokens = [sym('var?')] + expLi[lc + 1 : rc]; 	# list of body tokens (non-alias)
 		func = Function(params, yacc(bodyTokens));
 		expLi = expLi[ : k] + [func] + expLi[rc + 1 : ];	# DO NOT DIRECTLY RETURN THE RHS EXPRESSION. It is less readable.
@@ -298,9 +317,11 @@ def yacc(tokens):
 	def parseVar(tokens, j):								# form:		... var a = 10 , b = 20 ; ...
 		"Helps yacc() in parsing var statements."			# indices:		j          			semiPos
 		if j == 0 or tokens[j - 1] != sym('var?'):
-			raise SyntaxError('unexpected var statement');	# In JS, var statements may occur anywhere.
+			raise LJSyntaxErr('unexpected var statement');	# In JS, var statements may occur anywhere.
 		semiPos = topIndex(tokens, j, sym(';'));			# This may create an illusion of block-scope, which JS lacks.
 		subtokens = tokens[j+1 : semiPos];					# As a remedy, Jispy allows at most one var statement per scope,
+		if sym('+=') in subtokens or sym('-=') in subtokens:
+			raise LJSyntaxErr('illegal shorthand assignment');
 		inits = topSplit(subtokens, sym(','));				#	and, if used, it must be the very first statement in the scope.
 		for init in inits:									# The uninterned symbol `var?` is used to restrict var statements.
 			try:
@@ -308,7 +329,7 @@ def yacc(tokens):
 				assert type(init[0]) is Name;				# indices:   0  1  2   3  4 
 				assert init[1] is sym('=');
 			except AssertionError:
-				raise SyntaxError('illegal var statement');	# TODO: Currently, `var i = 0, i += 1` raises "illegal var statement".
+				raise LJSyntaxErr('illegal var statement');	# TODO: Currently, `var i = 0, i += 1` raises "illegal var statement".
 			rhsParsedExp = parseExp(init[2 : ]);			#		Should it raise "i is already defined"?
 			tree.append(['init', init[0], rhsParsedExp]);
 		return semiPos + 1;
@@ -325,7 +346,7 @@ def yacc(tokens):
 			rc = gmb(tokens, lc);			# right curly
 			assert rc > lc + 1;				# non-empty block
 		except (ValueError, AssertionError):
-			raise SyntaxError('illegal %s statement' % stmtName);
+			raise LJSyntaxErr('illegal %s statement' % stmtName);
 		cond = parseExp(tokens[lp + 1 : rp]);
 		code = yacc(tokens[lc + 1 : rc]);
 		tree.append(['if-ladder', cond, code])				# An if-ladder generically represents a any VALID combination
@@ -347,7 +368,7 @@ def yacc(tokens):
 			assert lc == j + 1;
 			rc = gmb(tokens, lc);
 		except (ValueError, AssertionError):
-			raise SyntaxError('illegal else statement');
+			raise LJSyntaxErr('illegal else statement');
 		cond = [sym('true')];	# alwyas truthy.			# The if-ladder, (which was previously created,)
 		code = yacc(tokens[lc+1 : rc]);						# is mutated by adding a condition which is always true:
 		tree[-1].append(cond);								# 	[if-ladder cond0 code0 ] --> [if-ladder cond0 code0 TrueCond code1]
@@ -357,9 +378,9 @@ def yacc(tokens):
 	def parseElse(tokens, j):								# Relies on parseElseIf() and parsePureElse() above.
 		"Helps yacc() in parsing else statements."		
 		if tree == [] or tree[-1][0] != 'if-ladder':
-			raise SyntaxError('misplaced else statement');
+			raise LJSyntaxErr('misplaced else statement');
 		if j == len(tokens) - 1 :
-			raise SyntaxError('unexpected else (last token)');
+			raise LJSyntaxErr('unexpected else (last token)');
 		if tokens[j+1] == 'if':
 			return parseElseIf(tokens[:], j);
 		else:
@@ -385,7 +406,7 @@ def yacc(tokens):
 		"Helps yacc() in parsing break statements."			# indices:		j	  j+1
 		try: assert tokens[j + 1] is sym(';');
 		except AssertionError:
-			raise SyntaxError('semicolon expected after break');
+			raise LJSyntaxErr('expected ; (semicolon) after break');
 		tree.append(['break']);
 		return j + 2;
 	
@@ -405,7 +426,7 @@ def yacc(tokens):
 						assert ls - 1 == 0;
 						break;
 		except AssertionError:
-			raise SyntaxError('illegal LHS in assignment');
+			raise LJSyntaxErr('illegal LHS in assignment');
 		return None;
 	
 	def parseAssign(stmt, tree=tree): # Relies on checkLhsExp 		# form:		 a[0] = 1 + b + c ;
@@ -417,7 +438,7 @@ def yacc(tokens):
 			rhsExp = parseExp(stmt[eqSign + 1 : ]);			#		has been written to do so exclusively, which 
 			checkLhsExp(lhsExp);							#		converts a shorthand assignment to an assignment
 		except AssertionError:								#		via parseAssign().
-			raise SyntaxError('illegal assignment %s' % stmt);
+			raise LJSyntaxErr('illegal assignment %s' % stmt);
 		tree.append(['assign', lhsExp, rhsExp]);
 		return None;
 	
@@ -436,9 +457,9 @@ def yacc(tokens):
 		pOrM = sym(short[0]); 									# sym('+') or sym('-'); i.e. Plus or Minus
 		rhsExp = lhsExp + [pOrM] + rhsExp;						# Convertin `lhs += rhs` to `lhs = lhs + rhs`
 		tree.append(['assign', lhsExp, rhsExp]);
-	
-	def parseFor(tokens, j):								#form:		... for ( i = 0 ;  i < 10 ; i += 1 )   { ... } ...
-		"Helps yacc(..) in parsing for stmt (as while)."	#indicces:		j   lp      s1        s2       rp  lc    rc
+
+	def sepForCls(tokens, j):							#form:		... for ( i = 0 ;  i < 10 ; i += 1 )   { ... } ...
+		"Helps parseFor() w/ separating sub-clauses in for."#indicces:		j   lp      s1        s2       rp  lc    rc
 		try:
 			lp = tokens.index(sym('('), j);
 			assert lp == j + 1;								# Notes:
@@ -453,29 +474,43 @@ def yacc(tokens):
 			assert s2 > s1 + 1;
 			assert sym(';') not in tokens[s2 + 1 : rp];
 		except (ValueError, AssertionError):
-			raise SyntaxError('illegal for statement');
-		asg1 = tokens[lp + 1 : s1]; # yet to be parsed		# TODO: Decompose this function into easily __readable__ chunks.
-		cond = parseExp(tokens[s1 + 1 : s2]); # __parsed__	#		It seems to be doing just too much by itself.
-		asg2 = tokens[s2 + 1 : rp]; # yet to be parsed
-		code = tokens[lc + 1 : rc]; # yet to be parsed
+			raise LJSyntaxErr('illegal for statement');
+		asgnCl = tokens[lp + 1 : s1];	# ASSiGNment CLause, yet to be parsed
+		condCl  = tokens[s1 + 1 : s2];
+		incrCl = tokens[s2 + 1 : rp];
+		codeCl  = tokens[lc + 1 : rc];
+		return (asgnCl, condCl, incrCl, codeCl, rc);	# Each clause is yet to be parsed.
+	
+	def parseForAssignments(asgnClause):
+		"Helps in parsing assignment and increment clauses."
 		tempTree = [];
-		for asg in [asg1, asg2]:	# parsing assignments	# We are parsing asg2 only to verify that its an assignment stmt.
+		asgns = topSplit(asgnClause, sym(','));
+		#print 'split asgns = ', asgns;
+		for asg in asgns:
 			if sym('=') in asg:
 				parseAssign(asg, tempTree);
 			elif sym('+=') in asg or sym('-=') in asg:
 				parseShortAssign(asg, tempTree);
 			else:
-				raise SyntaxError('illegal for statement');
-		[pAsg1, pAsg2] = tempTree;	# parsed assignments
-		code = yacc(code + asg2 + [sym(';')]); 				# parsed code; the UNPARSED increment-assignment is appended
-		tree.append(pAsg1);									# initial-assignment is perormed only once
-		tree.append(['while', cond, code]);					# equivalent while loop (after the initial-assigment is done) 
+				raise LJSyntaxErr('illegal for statement');
+		return tempTree;
+	
+	def parseFor(tokens, j):							
+		"Helps yacc(..) in parsing for stmt (as while)."
+		(asgnCl, condCl, incrCl, codeCl, rc) = sepForCls(tokens, j);
+		debug('parseFor(..)', tokens[j : ]);
+		pAsgns = parseForAssignments(asgnCl);				# parsed assignments (from assignment clause)
+		pCond = parseExp(condCl);							# parsed condition
+		pIncrs = parseForAssignments(incrCl);   			# only for error checking
+		pCode = yacc(codeCl) + pIncrs;# + incrCl + [sym(';')]);			# parsed code; the UNPARSED increment clause is appended
+		map(tree.append, pAsgns);							# Assignment is placed before while (in our parse tree)
+		tree.append(['while', pCond, pCode]);				# equivalent while loop
 		return rc + 1;
 	
 	def parseExpStmt(stmt):
 		"Helps yacc(..) parse exp-stmts like `print('Hi!');`"
 		if stmt[0] is sym('function'):
-			raise SyntaxError('unexpected token function (wrap it up in parenthesis)');
+			raise LJSyntaxErr('unexpected token function');	# functions, unless wrapped in parens, are illegal pure-expressions
 		tree.append(['exp-stmt', parseExp(stmt)]);
 		return None;	
 		
@@ -503,14 +538,13 @@ def yacc(tokens):
 			semiPos = topIndex(tokens, j, sym(';'));
 			stmt = tokens[j : semiPos];
 			if not stmt:
-				raise SyntaxError('empty statement');
+				raise LJSyntaxErr('empty statement');
 			if sym('=') in stmt:
 				parseAssign(stmt);
 			elif sym('+=') in stmt or sym('-=') in stmt:
 				parseShortAssign(stmt); 
 			else:
 				parseExpStmt(stmt);
-				#raise SyntaxError('unrecognized statement');
 			j = semiPos + 1;
 	return tree;
 
@@ -534,7 +568,7 @@ def gmob(li, i): # GetMatchingOpeningBacket. Cousin of gmb()
 		if li[j] == right : count += 1;
 		elif li[j] == left : count -= 1;
 		if count == 0: return j;
-	raise SyntaxError('unbalanced bracket ' + right);
+	raise LJSyntaxErr('unbalanced bracket ' + right);
 
 def cloneLi(li):
 	"Creates a NON-ALIAS clone of a (possibly nested) list."
@@ -566,7 +600,7 @@ def makeEnvClass(maxDepth=None): # maxDepth is private
 			if self.isGlobal: self.depth = 0;
 			else: self.depth = self.parent.depth + 1;
 			if maxDepth and self.depth >= maxDepth:
-				raise RuntimeError('maximum scope depth exceeded');
+				raise LJRuntimeErr('maximum scope depth exceeded');
 			if (self is self.parent):
 				raise Exception();	# internal error
 		def getEnv(self, key):	# used (mostly) internally
@@ -576,26 +610,50 @@ def makeEnvClass(maxDepth=None): # maxDepth is private
 				return self;
 			elif not self.isGlobal:
 				return self.parent.getEnv(key);
-			raise ReferenceError('%s is not defined' % key);
+			raise LJReferenceErr('%s is not defined' % key);
 		def init(self, key, value):
 			"Initializes a variable in the currect environment."
 			if key not in self: self[key] = value;
 			else:
-				raise ReferenceError('%s is already defined' % key);
+				raise LJReferenceErr('%s is already defined' % key);
 		def assign(self, key, value):
 			"Resets the value of a variable in its own environment."
 			self.getEnv(key)[key] = value;
 		def lookup(self, key):
 			"Looks up the value of a variable. (convenience)"
 			return self.getEnv(key)[key];
+		def show(self):
+			out = '\n';
+			for k in self:
+				if k not in 'type str len keys write writeln'.split():
+					out += '\t\t%s : %s\n' % (k, self[k]);
+			return out;
 	
 	return Env;
-	
-class ReturnStatement(Exception): pass;
-class BreakStatement(Exception): pass;
+
+class LJJump(Exception):
+	def __str__(self):
+		return 'unexpected jump statement';
+class LJReturn(LJJump): pass;
+class LJBreak(LJJump): pass;
+
+def LJ_str(x):
+	"LJ's str() function. Also used in run() below & in builtins()."
+	if type(x) is bool:
+		return 'true' if x else 'false';
+	elif type(x) is float:
+		if x == round(x): return str(int(x));
+		else: return str(x);
+	elif type(x) is str: return x;
+	elif type(x) in [list, dict]:
+		return json.dumps(x);
+	elif type(x) is Function or inspect.isfunction(x):
+		raise LJTypeErr("functions don't have string equivalents");
+	raise Exception(); # internal error
+
 #############################################################
 
-def run(tree, env, maxLoopTime=None):
+def run(tree, env, maxLoopTime=None, writer=None):
 	"Executes parsed code in an environment `env`."
 	# -------------------------------------------------------
 	# *********************************************
@@ -629,7 +687,7 @@ def run(tree, env, maxLoopTime=None):
 					assert type(key) is str;				# JS keys MUST be strings. Numbers & booleans are coerced to strings.
 					assert pair[1] is sym(':');
 				except AssertionError :
-					raise SyntaxError('bad object literal');
+					raise LJSyntaxErr('illegal object literal');
 				valueLi = pair[2 : ];
 				obj[key] = eval(valueLi, env);
 			expLi = expLi[ : j] + [obj] + expLi[rc + 1 : ];
@@ -646,7 +704,7 @@ def run(tree, env, maxLoopTime=None):
 				try:
 					assert len(eLi) >= 1;
 				except AssertionError:
-					raise SyntaxError('bad array literal');
+					raise LJSyntaxErr('illegal array literal');
 				arr.append(eval(eLi, env));
 			expLi = expLi[ : j] + [arr] + expLi[rs + 1 : ];
 			return expLi;
@@ -678,22 +736,22 @@ def run(tree, env, maxLoopTime=None):
 		def refineObject(obj, key):
 			"Helps with object refinements."
 			if type(key) is not str:
-				raise TypeError('object keys must be strings');
+				raise LJTypeErr('object keys must be strings');
 			if key not in obj:
-				raise KeyError(key);
+				raise LJKeyErr(key);
 			return obj[key]; # intermediate result
 		
 		def refineListy(li, ind):
 			"Helps with list and string refinements."
 			msg = 'array' if type(li) is list else 'string';
 			if type(ind) is not float:
-				raise TypeError(msg + ' indices must be numbers');
+				raise LJTypeErr(msg + ' indices must be numbers');
 			elif ind < 0:
-				raise TypeError(msg + ' indices must be non-negative');
+				raise LJTypeErr(msg + ' indices must be non-negative');
 			elif ind != round(ind):
-				raise TypeError(msg + ' indices must integers');
+				raise LJTypeErr(msg + ' indices must integers');
 			elif ind >= len(li):
-				raise IndexError(msg + ' index out of range');
+				raise LJIndexErr(msg + ' index out of range');
 			return li[int(ind)];	# intermediate result
 		
 		def refine(expLi, j):								# form:		... <py-dict-or-list> [   10   ] ...
@@ -705,7 +763,7 @@ def run(tree, env, maxLoopTime=None):
 			assert type(ob) in [dict, list, str];
 			rs = gmb(expLi, j);
 			if rs == j + 1:
-				raise SyntaxError('bad refinement');
+				raise LJSyntaxErr('illegal refinement');
 			inner = expLi[j + 1 : rs];
 			ki = eval(inner, env); # short for Key/Index
 			if type(ob) is dict:
@@ -718,22 +776,22 @@ def run(tree, env, maxLoopTime=None):
 		def invokeFunction(func, args):
 			"Helps invokes non-native functions."
 			if len(args) != len(func.params):
-				raise TypeError('incorrect no. of arguments');			
+				raise LJTypeErr('incorrect no. of arguments');			
 			Env = type(env);								# has same maxDepth
 			newEnv = Env(func.params, args, env);			# functions have their own scope
 			bodyClone = cloneLi(func.body);					# shields func.body from being mutated
 			try:
 				run(bodyClone, newEnv);
-			except ReturnStatement as r:
+			except LJReturn as r:
 				inter = r.args[0];
 				return inter;	# intermediate result
-			raise TypeError('non-returning function');
+			raise LJTypeErr('non-returning function');
 		
 		def invokePyFunction(func, args):
 			"Helps invoke python's function."
 			nParams = len(inspect.getargspec(func)[0]);		# number of parameters
 			if len(args) != nParams:
-				raise TypeError('incorrect no. of arguments');
+				raise LJTypeErr('incorrect no. of arguments');
 			inter = func(*args);
 			types = [bool, float, str, list, dict, Function];
 			if type(inter) in types or inspect.isfunction(inter):
@@ -803,25 +861,24 @@ def run(tree, env, maxLoopTime=None):
 			try:	
 				valExpLi = [expLi[j + 1]];
 			except ValueError:
-				raise SyntaxError('unexpected ' + op);
+				raise LJSyntaxErr('unexpected unary operator' + op);
 			if op is sym('!'):				
 				inter = not isTruthy(eval(valExpLi, env));
 				expLi = expLi[ : j] + [inter] + expLi[j+2 : ];
 			elif op is sym('-'):
 				inter = eval(valExpLi, env);
 				if type(inter) is not float:
-					raise TypeError('bad operand for unary -');
+					raise LJTypeErr('bad operand for unary -');
 				expLi = expLi[ : j] + [-inter] + expLi[j+2 : ];
 			elif op is sym('+'):
 				inter = eval(valExpLi, env);
-				if type(inter) is str:
-					tmp = float(inter);
-					if isDecimal(inter): inter = tmp;
-					else:
-						raise SyntaxError('bad operand for unary +');
+				if type(inter) in [str, float]:
+					try: interF = float(inter);				# Note: `isDecimal` is not useful here.
+					except ValueError:
+						raise LJTypeErr('bad operand for unary +');
 				else:
-					raise TypeError('bad operand for unary +');
-				expLi = expLi[ : j] + [inter] + expLi[j+2 : ];
+					raise LJTypeErr('bad operand for unary +');
+				expLi = expLi[ : j] + [interF] + expLi[j+2 : ];
 			return expLi;
 		
 		def indiBinop(a, op, b):
@@ -832,7 +889,8 @@ def run(tree, env, maxLoopTime=None):
 				if type(x) != type(y) : return False;		#		But, `a = 1.0; b = 1.0; a is b` --> False
 				if type(y) in [bool, float, str]:			#		Thus `is` in py is NOT the same as `===` in JS
 					return x == y;
-				assert type(y) in [list, dict];
+				refTypes = [list, dict, Function];
+				assert type(y) in refTypes or inspect.isfunction(y);
 				return x is y;
 			return {										# pythonic switch statement								
 				sym('==='): eqeqeq,
@@ -872,7 +930,7 @@ def run(tree, env, maxLoopTime=None):
 				msg = rawMsg % (op, op2);						# because,
 				if op == op2:									#				1 > 1			-->		false
 					msg = 'operator %s cannot be chained' % op;	#				false < 1		-->		true
-				raise SyntaxError(msg);							#
+				raise LJSyntaxErr(msg);							#
 			else: pass;											# We shall not be a part of this madness!!
 		
 		def binop(expLi, op, j):							# form:		... value0 op value1 ...
@@ -885,7 +943,7 @@ def run(tree, env, maxLoopTime=None):
 				a = expLi[j - 1];	# first operand
 				b = expLi[j + 1];	# second operand
 			except (AssertionError, IndexError):
-				raise SyntaxError('unexpected operator ' + op);
+				raise LJSyntaxErr('unexpected operator ' + op);
 			checkChaining(expLi, op, j);										
 			indiOps = map(sym, '=== !== && ||'.split());					
 			if op in indiOps:											
@@ -902,7 +960,7 @@ def run(tree, env, maxLoopTime=None):
 					assert op in numOps;
 					inter = numBinop(a, op, b);
 					return getRetExpLi(inter);
-			raise TypeError('bad operands for binary ' + op);
+			raise LJTypeErr('bad operands for binary ' + op);
 	
 		def simpleEval(expLi):
 			"Evaluates unary and binary operations."
@@ -949,11 +1007,13 @@ def run(tree, env, maxLoopTime=None):
 			if oldLen > newLen:
 				oldLen = newLen;
 			else:
-				raise SyntaxError('illegal expression <non-shrink>');
+				errStr = ' '.join(map(str, expLi));
+				raise LJErr('illegal expression ' + errStr);
 		# having finished looping...
 		ans = expLi[0];
-		if type(ans) not in [bool, float, str, list, dict, Function]:
-			raise SyntaxError('illegal expression <type>');		# TODO: remove `<type>` and `<non-shrink>` form error messages
+		LJTypes = [bool, float, str, list, dict, Function];
+		if not (type(ans) in LJTypes or inspect.isfunction(ans)):
+			raise LJTypeErr('illegal expression (of unknown type)');
 		return ans;	# end eval(..)				
 
 	# *********************************************
@@ -961,7 +1021,9 @@ def run(tree, env, maxLoopTime=None):
 	def runInit(stmt, env):
 		"Helps exec an init `var a = 10;` statement."
 		[_, name, expLi] = stmt;
+		#print 'pre init ', stmt, ' env = ', env.show();
 		env.init(name, eval(expLi, env));
+		#print 'post init ', stmt, ' env = ', env.show();
 	
 	def runIfLadder(stmt, env):
 		"Helps run through an if-ladder."
@@ -974,20 +1036,22 @@ def run(tree, env, maxLoopTime=None):
 	def runWhile(stmt, env):
 		"Helps run a while loop."
 		[_, expLi, code] = stmt;
+		#print 'while cond = ', expLi, ' & env = ', env.show();
 		t1 = time.time();
 		while isTruthy(eval(expLi[:], env)):				# expLi[:] is eqvt. to cloneLi(expLi) as expLi is flat (non-nested).
 			try: run(cloneLi(code), env);					# Cloning shields while's code-block from mutation
-			except BreakStatement: break;
+			except LJBreak: break;
 			if maxLoopTime and time.time() - t1 > maxLoopTime:
-				raise RuntimeError('maximum loop time exceeded');
+				raise LJRuntimeErr('looping for to long');
 	
 	def runReturn(stmt, env):
 		"Emulates return statement."
 		[_, expLi] = stmt;
-		raise ReturnStatement(eval(expLi, env));	
+		raise LJReturn(eval(expLi, env));	
 	
 	def runNameAssign(stmt, env):
 		"Helps runAssign(..) in executing simple assignments."
+		#print 'nameAssign, ', stmt;
 		[_, [name], rExpLi] = stmt;
 		env.assign(name, eval(rExpLi, env));
 	
@@ -1006,20 +1070,24 @@ def run(tree, env, maxLoopTime=None):
 			eval(lExpLi, env);		# checks range and roundness
 			objarr[int(innexp)] = rhsExp;
 		else:	# Note: strings are immutable
-			raise ReferenceError('illegal LHS in assignment');
+			raise LJTypeErr('illegal LHS in assignment');
 	
 	def runAssign(stmt, env):
 		"Helps exec variable assignment."
 		[_, lExpLi, _] = stmt;
+		#print 'pre runAssign, ', stmt, ' env = ', env.show();
 		if len(lExpLi) == 1:
 			runNameAssign(stmt, env);
 		else:
 			runObjArrAssign(stmt, env);
+		#print 'pre runAssign, ', stmt, ' env = ', env.show();
 	
 	def runExpStmt(stmt, env):
 		'Helps eval exp-stmts like `writeln("Hi!");`'
 		[_, expLi] = stmt;
-		return eval(expLi, env);
+		ans = eval(expLi, env);
+		if writer: writer(LJ_str(ans) + '\n');
+		return ans;
 	
 	# -------------------------------------------------------
 
@@ -1034,35 +1102,23 @@ def run(tree, env, maxLoopTime=None):
 		elif stmt[0] == 'return':
 			runReturn(stmt, env);
 		elif stmt[0] == 'break':
-			raise BreakStatement();							# too simple for a function
+			raise LJBreak();							# too simple for a function
 		elif stmt[0] == 'assign':
 			runAssign(stmt, env);
 		elif stmt[0] == 'exp-stmt':
 			runExpStmt(stmt, env);
 
 #############################################################
-def builtins(write):
+def builtins(writer):
 	"Adds built-in functions like type(), len(), keys() etc."
-	
-	def n_str(x):
-		if type(x) is bool:
-			return 'true' if x else 'false';
-		elif type(x) is float:
-			if x == round(x): return str(int(x));
-			else: return str(x);
-		elif type(x) is str: return x;
-		elif type(x) in [list, dict]:
-			return json.dumps(x);
-		elif type(x) is Function or inspect.isfunction(x):
-			raise RuntimeError("functions don't have string equivalents");
-		raise Exception(); # internal error
-	
+	global LJ_str;
+	n_str = LJ_str;
 	def n_write(x):
-		if write: write(n_str(x));
+		if writer: writer(n_str(x));
 		return 0.0;
 	
 	def n_writeln(x):
-		if write: write(n_str(x) + '\n');
+		if writer: writer(n_str(x) + '\n');
 		return 0.0;
 		
 	def n_type(x):
@@ -1075,15 +1131,15 @@ def builtins(write):
 	
 	def n_len(x):
 		if type(x) in [str, list, dict]: return float(len(x));
-		raise TypeError('%s has no len()' % n_type(x));
+		raise LJTypeErr('%s has no len()' % n_type(x));
 	
 	def n_keys(obj):
 		if type(obj) is dict: return obj.keys();
-		raise TypeError('%s has no keys()' % n_type(x));
+		raise LJTypeErr('%s has no keys()' % n_type(x));
 	
 	loDict = locals();
 	output = {};
-	if not write:
+	if not writer:
 		loDict.pop('n_write');
 		loDict.pop('n_writeln');
 	for key in loDict:
@@ -1110,37 +1166,45 @@ def addNatives(env, dicty):
 #############################################################
 class Runtime(object):
 	"Represents a context for running (possibly many) programs."
-	def __init__(self, maxDepth=None, maxLoopTime=None, write= sys.stdout.write):
+	def __init__(self, maxDepth=None, maxLoopTime=None, writer=sys.stdout.write):
 		self.gEnv = makeEnvClass(maxDepth)();
-		addNatives(self.gEnv, builtins(write));
+		self.writer = writer;
+		addNatives(self.gEnv, builtins(self.writer));
 		self.maxLoopTime = maxLoopTime;
 	def addNatives(self, dicty):
 		addNatives(self.gEnv, dicty);
-	def run(self, prog):
-		#tokens = lex(prog);
-		#print 'tokens --->\n', tokens;
-		#tree = yacc(tokens);
-		#print 'tree --->\n', tree;
-		run(yacc(lex(prog)), self.gEnv, self.maxLoopTime);
+	def run(self, string, tree=None, consoleMode=False):
+		if not tree: tree = yacc(lex(string));
+		if consoleMode and not self.writer:
+			raise Exception('trying to run() in consoleMode without a writer()');
+		# otherwise...
+		tempWriter = self.writer if consoleMode else None;
+		run(tree, self.gEnv, self.maxLoopTime, tempWriter);
 
-def console(prompt = 'jispy> '):
+def console(prompt='jispy> ', rt=None):
 	"This is REPL-like, but not really a REPL."
 	original_prompt = prompt;
-	rt = Runtime();
-	inp = '';
-	write = sys.stdout.write;
+	if not rt: rt = Runtime();								# Don't put rt=Runtime() as a default argument.
+	inp = '';												#  If you do so, runtime will not be renewed on each call to console();
 	while True:
 		inp += '\n';
 		try: inp += raw_input(prompt) ;
 		except (EOFError):
-			sys.stdout.write('\n');
+			print('\n');
 			return;
 		if not inp.endswith('\t'):
 			tmp = inp;	inp = '';
 			try:
-				rt.run(tmp);
-			except Exception as e:
-				print('%s: %s' % (type(e).__name__, e))
+				rt.run(tmp, consoleMode=True);
+			except LJErr as e:
+				print('%s: %s' % (type(e).__name__[2:] + 'or' , e))
+			except LJJump as e:
+				if isa(e, LJReturn):
+					print('SyntaxError: unexpected return statement');
+				elif isa(e, LJBreak):
+					print('SyntaxError: unexpected break statement');
+				else:
+					raise Exception(); # internal error
 			prompt = original_prompt
 		else:
 			prompt = '.' * (len(prompt) - 1) + ' ' ;
