@@ -139,7 +139,7 @@ The above example aptly demonstrates that JavaScript's relational operators shou
 
 In JavaScript, there are four function invocation patterns. The value of `this` is determined by the invocation pattern used. `this` makes JavaScript look like Java. Apart from that, it rarely does anything useful.
 
-JavaScript's constructors are amazing at diverting our attention from its truly prototypal nature. Why do we need to constructors (or equally classes) when objects are object factories! We don't. No exceptions.
+JavaScript's constructors are amazing at diverting our attention from its truly prototypal nature. Why do we need to use constructors (or equally classes) when objects are object factories! We don't. No exceptions.
 
 Perhaps the biggest irony in JavaScript is that the prototype chain shadows the language's true prototypal nature. In my opinion, Lua's `setmetatable` is what JavaScript's `setprototype` should have been. Further, the prototype chain leads to unwanted noise with the `in` keyword.
 
@@ -188,7 +188,8 @@ The `for` loop has the following form:
 ```js
 for (assignment, condition, increment) {
    body
-}```
+}
+```
 
 Each clause, i.e. `assignment`, `condition`, `increment` and `body` must be non-blank.
 
@@ -219,7 +220,9 @@ So, an LJ program would have a different meaning than a JS program. This is a co
 #### Keywords
 
 The following JS keywords are meaningful in LJ:
-```js var if else while for break function return true false```
+```js
+var if else while for break function return true false
+```
 
 All other JS keywords along with the words ` undefined`, `NaN` and `Infinity` are meaningless in LJ and **may not be used**.
 
@@ -228,7 +231,7 @@ All other JS keywords along with the words ` undefined`, `NaN` and `Infinity` ar
 ## Example Programs
 
 Computing factorial:
-```javascript
+```js
 var n = 6, factorial = function (n) {
     if (n <= 1) { return 1; }
     return n * factorial(n - 1);
