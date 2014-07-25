@@ -8,6 +8,8 @@ import time;
 import json;	 	# used repr of arrs and objs
 import inspect;
 import sys;
+import math;
+import random;
 isa = isinstance;
 debugOn = False;
 
@@ -123,17 +125,20 @@ def lex(s):
 	matches = re.findall(pat, s + '\n');
 	tokens = [];
 	
+	def isPropertyName(s):
+		"Helps subscriptify() tell if `s` is a valid key."	# TODO: Currently, `a = {}; a.function = 1;` is legal; 
+		return re.findall(r'\w+', s) == [s];				#		BUT, `a = {function : 1};` is illegal. FIX THIS.
+	
+	def subscriptify(s):
+		"Helps handleDot() change dots to subscripts."
+		if isPropertyName(s):
+			toAppend = [sym('['), s, sym(']')];
+			map(tokens.append, toAppend);
+		else:
+			raise LJSyntaxErr('illegal refinement ' + s);
+	
 	def handleDot(x):
 		"Works with dot-refinement(s)"
-		
-		def subscriptify(s):
-			"Helps change dots-refinements to subscripts."
-			if isNameLike(s):
-				toAppend = [sym('['), s, sym(']')];
-				map(tokens.append, toAppend);
-			else:
-				raise LJSyntaxErr('illegal refinement ' + x);
-						
 		if x[-1] == '.':
 			raise LJSyntaxErr('unexpected trailing . (dot) ' + x);		# TODO: Support trailing dots.
 		elif x[0] == '.':
@@ -781,7 +786,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 			newEnv = Env(func.params, args, env);			# functions have their own scope
 			bodyClone = cloneLi(func.body);					# shields func.body from being mutated
 			try:
-				run(bodyClone, newEnv);
+				run(bodyClone, newEnv, maxLoopTime, writer);
 			except LJReturn as r:
 				inter = r.args[0];
 				return inter;	# intermediate result
@@ -1030,7 +1035,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 		for j in xrange(1, len(stmt), 2):
 			expLi, code = stmt[j], stmt[j+1];
 			if isTruthy(eval(expLi, env)):
-				run(code, env);
+				run(code, env, maxLoopTime, writer);
 				break;
 						
 	def runWhile(stmt, env):
@@ -1039,7 +1044,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 		#print 'while cond = ', expLi, ' & env = ', env.show();
 		t1 = time.time();
 		while isTruthy(eval(expLi[:], env)):				# expLi[:] is eqvt. to cloneLi(expLi) as expLi is flat (non-nested).
-			try: run(cloneLi(code), env);					# Cloning shields while's code-block from mutation
+			try: run(cloneLi(code), env, maxLoopTime, writer);		# Cloning shields while's code-block from mutation
 			except LJBreak: break;
 			if maxLoopTime and time.time() - t1 > maxLoopTime:
 				raise LJRuntimeErr('looping for to long');
@@ -1111,17 +1116,20 @@ def run(tree, env, maxLoopTime=None, writer=None):
 #############################################################
 def builtins(writer):
 	"Adds built-in functions like type(), len(), keys() etc."
-	global LJ_str;
+	global LJ_str;											# n_ in the following functions/variables indicates NATIVE
 	n_str = LJ_str;
 	def n_write(x):
+		"Default output function."
 		if writer: writer(n_str(x));
 		return 0.0;
 	
 	def n_writeln(x):
+		"Default output function that appends new line."
 		if writer: writer(n_str(x) + '\n');
 		return 0.0;
 		
 	def n_type(x):
+		"Returns the string name of LJ type."
 		if inspect.isfunction(x): return 'function';
 		return { # pythonic switch
 			bool:	'boolean',	float: 		'number',
@@ -1130,13 +1138,49 @@ def builtins(writer):
 		}[type(x)];			
 	
 	def n_len(x):
+		"Returns length of LJ strings, arrays and objects."
 		if type(x) in [str, list, dict]: return float(len(x));
 		raise LJTypeErr('%s has no len()' % n_type(x));
 	
 	def n_keys(obj):
+		"Returns an array of keys in an object `obj`."
 		if type(obj) is dict: return obj.keys();
 		raise LJTypeErr('%s has no keys()' % n_type(x));
 	
+	def isF(*args):
+		"Helps f() check that each argument passed is float."
+		if all(type(n) is float for n in args):
+			return True;
+		raise LJTypeErr('methods of math accept numbers only');
+	
+	def f(func, n):
+		"Creates a function that calls `func` with `n` args."
+		if n == 0:
+			return lambda: func();							# Creating a lambda is required, as all native functions must 
+		if n == 1:											#	be USER DEFINED.
+			return lambda x: func(x) if isF(x) else None;	# Thus, we may return `lambda x: abs(x)` but not `abs`;
+		if n == 2:
+			return lambda x, y: func(x, y) if isF(x, y) else None;
+		raise Exception(); # internal error
+	
+	e = math.e;
+	n_math = {
+		'E': e, 'PI': math.pi, 'LN10': math.log(10.0, e), 
+		'LN2': math.log(2.0, e), 'LOG2E': math.log(e, 2.0), 
+		'LOG10E': math.log(e, 10.0), 'SQRT1_2': math.sqrt(0.5),
+		'SQRT2': math.sqrt(2.0),'abs': f(abs, 1),
+		'acos': f(math.acos, 1), 'asin': f(math.asin, 1),
+		'atan': f(math.atan, 1), 'atan2': f(math.atan2, 2),
+		'ceil': f(math.ceil, 1), 'cos': f(math.cos, 1), 
+		'exp': f(math.exp, 1), 'floor': f(math.floor, 1),
+		'log': lambda x: math.log(x, e) if isF(x) else None,
+		'max': lambda arr: max(arr) if isF(*arr) else None,
+		'min': lambda arr: min(arr) if isF(*arr) else None,
+		'pow': f(pow, 2), 'random': f(random.random, 0),
+		'round': f(round, 1), 'sin': f(math.sin, 1),
+		'sqrt': f(math.sqrt, 1), 'tan': f(math.tan, 1)#,
+	};
+		
 	loDict = locals();
 	output = {};
 	if not writer:
@@ -1175,13 +1219,14 @@ class Runtime(object):
 		addNatives(self.gEnv, dicty);
 	def run(self, string, tree=None, consoleMode=False):
 		if not tree: tree = yacc(lex(string));
+		#print tree;
 		if consoleMode and not self.writer:
 			raise Exception('trying to run() in consoleMode without a writer()');
 		# otherwise...
 		tempWriter = self.writer if consoleMode else None;
 		run(tree, self.gEnv, self.maxLoopTime, tempWriter);
 
-def console(prompt='jispy> ', rt=None):
+def console(prompt='jispy> ', rt=None, semify=False):		# semify auto-appends semicolons (if required)
 	"This is REPL-like, but not really a REPL."
 	original_prompt = prompt;
 	if not rt: rt = Runtime();								# Don't put rt=Runtime() as a default argument.
@@ -1194,6 +1239,9 @@ def console(prompt='jispy> ', rt=None):
 			return;
 		if not inp.endswith('\t'):
 			tmp = inp;	inp = '';
+			if not semify: pass;
+			elif tmp.endswith(';') or tmp.endswith('}'): pass;
+			else: tmp += ';';
 			try:
 				rt.run(tmp, consoleMode=True);
 			except LJErr as e:

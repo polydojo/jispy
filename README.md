@@ -18,9 +18,12 @@ Jispy comes armed with a console and an API. While the API provides far greater 
 
 Let's jump right in.
 
-```py
+```py # Kick starting the console...
  >>> from jispy import console
- >>> console()  # continued...
+ >>> console()  # continued int the following block...
+```
+```js
+ #// The JS console in Python. (Separated for better syntax highlighting.)
  jispy> "Hello World!";
  Hello World!
  jispy> var obj = {i: 'am', a: 'object!'}, arr = ['I', 'am', 'an', 'array'];
@@ -50,22 +53,26 @@ Four functions come builtin with (the standard configuration of) Jispy:
 Each accepts a single argument. The last two are like their python-versions.  
 `keys()` is equivalent to `Object.keys()` in JS or `dict.keys()` in Python.
 
+Also, the `math` object is made globally available. It is very similar to JavaScript's `Math` object.
+
 To enter multiple lines of code, end each line with a tab.  
 Here's an example with `for`:
-```python
- >>> jispy.console()
- jispy> var obj = {a: 'apple', b: 'ball', c: 'cat'}, i = 0, k = 0;
- jispy> for (i = 0; i < len(obj); i += 1) {      
- ......     k = keys(obj)[i];    
- ......     writeln(k + ' for ' + obj[k]);       
+```js
+ jispy> var obj = {a: 'apple', b: 'ball', c: 'cat'};
+ jispy> var i = 0, j = 0, keyz = keys(obj);
+ jispy> for (i = 0; i < len(obj); i += 1) {     
+ ......          j = keyz[i];    
+ ......          j + ' --> ' + obj[j];   
  ...... }
- a for apple
- c for cat
- b for ball
+ a --> apple
+ c --> cat
+ b --> ball
+ jispy> "Ain't Jispy Awesome?!";
+ Ain't Jispy Awesome?!
 ```
 
 And oh yes! Objects have `len()` in LittleJ.  
-`len(obj)` equivalent to `Object.keys(obj).length` in JavaScript.
+`len(obj)` equivalent to `Object.keys(obj).length` in JavaScript. Thus, in the above code, we may replace `i < len(obj)` by `i < len(keyz)`.
 
 ### The API
 
@@ -93,16 +100,17 @@ A `Runtime` is a wrapper around a global environment. It allows you to run multi
 
 + `maxLoopTime`: The maximum time in seconds for which a loop may run.
 + `maxDepth`: The maximum allowable depth of nested environments (scopes).
-+ `write`: `write` method of a `file`. It defaults to `sys.stdout.write`.
++ `writer`: `write` method of a `file`. It defaults to `sys.stdout.write`.
 
-`maxLoopTime` and `maxDepth` both default to `None`. Unless changed to a positive value, there shall be no checks on infinite-looping and/or infinite-recursion.
+`maxLoopTime` and `maxDepth` both default to `None`. Unless set to a positive value, there shall be no checks on infinite-looping and/or infinite-recursion.
 
-if `write` is set to `None`, inbuilts `write` and `writeln` shall not be made available.
+if `writer` is set to `None`, inbuilts `write` and `writeln` shall not be made available.
 
 #### More about `console()`
 
 Each call to Jispy's `console()` uses a **single** `Runtime`, wherein each input line (or lines) is executed as an independent program. But since the `Runtime` is common, later programs have access to variables defined in earlier programs.
 
+Originally, the `console()` was not a **REPL**. It now is. There is not need to use `writeln` with the console.
 
 ### Adding Natives
 
