@@ -18,7 +18,8 @@ Jispy comes armed with a console and an API. While the API provides far greater 
 
 Let's jump right in.
 
-```py # Kick starting the console...
+```py
+ # Kick starting the console...
  >>> from jispy import console
  >>> console()  # continued int the following block...
 ```
