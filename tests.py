@@ -4,31 +4,31 @@ tests = [
 	'''	// Test-0: testing for loop (factorial)
 		var n = 6.0, ans = 1, i = 1;
 		for (i = 1; i <= n; i += 1) { ans = ans * i; }
-		writeln('0.  ' + str(ans === 6*5*4*3*2*1));
+		writeln(ans === 6*5*4*3*2*1);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-1: shorthand assignments.
 		// Generating 9 times table
 		var i = 0, j = 10;
 		while (i < 10) {
-			//print('9 x ' + str(i+1) + ' = ' + str(i) + str(j));
+			//writeln('9 x ' + str(i+1) + ' = ' + str(i) + str(j));
 			i += 1;
 			j -= 1;
 		}
-		writeln('1.  ' + str(i === 10 && j === 0));
+		writeln(i === 10 && j === 0);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-2: inbuilt len() and keys()
 		var nil = 0,
 			obj = {a:'apple', b:'ball', c:'cat'},
-			leno = function (x) {
-				if (type(x) === 'object') {
-					return len(keys(x));
+			leno = function (x) {							// Note: when this function was written,
+				if (type(x) === 'object') {					//			len() accepted strings and arrays only.
+					return len(keys(x));					// 			Now, it also accepts objects.
 				} else {
 					return len(x);
 				}
 			};
-		writeln('2.  ' + str(leno(obj) === 3));
+		writeln(leno(obj) === 3);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-3.: inbuilt type()
@@ -43,16 +43,16 @@ tests = [
 			}
 			i = i + 1;
 		}
-		writeln('3.  ' + str(flag));
+		writeln(flag);
 	''',
 	#	-----------------------------------------------------
 	''' // Test-4: function w/ no params
 		var foo = function () { return true; };
-		writeln('4.  ' + str(foo()));
+		writeln(foo());
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-5: calling a function literals w/ no params
-		writeln('5.  ' + str(!!  function(){return 1;}()  ));
+		writeln(!!function(){return 1;}());
 	''',
 	#	-----------------------------------------------------
 	''' // Test-6: working with objects and arrays
@@ -63,7 +63,7 @@ tests = [
 		obj['b'] = 1;
 		obj['c'] = 2;
 		flag0 = obj.a === 0 && obj.b === 1 && flag0 && flag1;
-		writeln('6.  ' + str(flag0));
+		writeln(flag0);
 	''',
 	#	-----------------------------------------------------
 	'''
@@ -74,7 +74,7 @@ tests = [
 			else if (x === 0) { return 1; }
 			else { return x * factorial(x - 1); }
 		};
-		writeln('7.  ' + str(factorial(6) === 720));
+		writeln(factorial(6) === 720);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-8: scoping and var-stmt within functions
@@ -84,7 +84,7 @@ tests = [
 				g = 1000;		// outter-g should be 0;
 				return one;
 		};
-		writeln('8.  ' + str(g === 0));
+		writeln(g === 0);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-9: testing return (w/ simple add function)
@@ -92,7 +92,7 @@ tests = [
 			add = function(x, y) {
 				return x + y;
 			};
-		writeln('9.  ' + str(add(a, b) === 3));
+		writeln(add(a, b) === 3);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-10: break-statement
@@ -101,26 +101,26 @@ tests = [
 			brokeOut = true;
 			break;
 		}
-		writeln('10. ' + str(brokeOut));
+		writeln(brokeOut);
 	''',
 	#	-----------------------------------------------------
-	'''	// testing while (factorial)
+	'''	// Test-11: while (factorial)
 		var n = 10, i = 1, ans = 1;
 		while (i <= n) {
 			ans = ans * i;
 			i = i + 1;
 		}
-		writeln('11. ' + str(ans === 10*9*8*7*720));
+		writeln(ans === 10*9*8*7*720);
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-12: simple dot-refinement
 		var obj = {a : 'apple'};
-		writeln('12. ' + str(obj.a === 'apple'));
+		writeln(obj.a === 'apple');
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-13: cascaded dot-refinement
 		var obj = {a : {b : 'bombay'} };
-		writeln('13. ' + str(obj.a.b === 'bombay'));
+		writeln(obj.a.b === 'bombay');
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-14: dot & subscript
@@ -129,7 +129,7 @@ tests = [
 			y : {z : 'king'}
 		};
 		flag = obj['y'].z === obj.y['z'] && obj.y['z'] === obj.y.z;
-		writeln('14. ' + str(flag));
+		writeln(flag);
 	''',
 	#	-----------------------------------------------------
 	#''' // Test-14-negative: associativity of ===					# Appropriate SyntaxError was successfully raised
@@ -140,7 +140,7 @@ tests = [
 	'''	// Test-15: assigning to dot-refined property
 		var obj = {a : 'apple'};
 		obj.a = 'newApple';
-		writeln('15. ' + str(obj.a === 'newApple'));
+		writeln(obj.a === 'newApple');
 	''',
 	#	-----------------------------------------------------
 	'''	// Test-16: leading dots (dot-refinements)
@@ -150,10 +150,8 @@ tests = [
         			"post" : { "id" : 1, "title" : "A blog post", "body" : "Some useful content" }
      				}
 		};
-		writeln('16. ' + str(obj.data
-						  .post.id === 1
-						)
-			 );
+		writeln(obj.data
+						.post.id === 1);
 	''',
 	#	-----------------------------------------------------
 	#'''	// Test-16-negative: trailing dots (dot-refinements)		# Currently, trailing refinements are unsupported.
@@ -176,7 +174,7 @@ tests = [
 			flag =  ternary(true, 'conseq', 'alt') === 'conseq' &&
 					ternary(false, 'conseq', 'alt' === 'alt') 	// woo! a comment!!
 					; // exp ends here..
-			writeln('17. ' + str(flag));
+			writeln(flag);
 		
 	''',
 	#	-----------------------------------------------------
@@ -189,7 +187,7 @@ tests = [
 	#	-----------------------------------------------------
 	'''	// Test-18: Unary +
 		var flag = +'88.88' === 88.88 && -(+'7') === -7;
-		writeln('18. ' + str(flag));
+		writeln(flag);
 	''',
 	#''' // Test-18-negative-1: Max Loop Time							# Test was SUCCESSFUL.
 	#	var tmp = 0;
@@ -214,7 +212,7 @@ tests = [
 			i = 0, k = 0, flag = true;
 		for (i = 0; i < len(obj); i += 1) {
 			k = keys(obj)[i];
-			writeln('19. ' + str(obj[k]));
+			writeln(obj[k]);
 		}
 	''',
 	#	-----------------------------------------------------
@@ -226,14 +224,89 @@ tests = [
 		    	break;
 			}
 		}
-		writeln('20. ' + str(flag));
-	'''
+		writeln(flag);
+	''',
+	# -------------------------------------------------------
+	''' // Test-21: testing del
+		var obj = {a: 'apple', b: 'ball'}, ks = false, i = 0,
+			isIn = function (obj, key) {
+				ks = keys(obj);
+				for (i = 0; i < len(ks); i += 1) {
+					if (ks[i] === key) {
+						return true;
+					}
+				}
+				return false;
+			};
+		del(obj, 'a');
+		writeln(!isIn(obj, 'a'));
+	''',
+	# -------------------------------------------------------
+	'''	// Test-22: testing math''s max, min, round, floor, ceil
+		var f = {};		// a container for flags
+		f.a = math.round(1.23) === 1;
+		f.b = math.max([1,2,3]) === 3;
+		f.c = math.min([1,2,3]) === 1;
+		f.d = math.ceil(1.2) === 2;
+		f.e = math.floor(1.8) === 1;
+		f.f = math.sqrt(4) === 2;
+		writeln(f.a && f.b && f.c && f.d && f.e && f.f);
+	''',
+	# -------------------------------------------------------
+	''' // Test-23: testing closures.						// This test lead to a MAJOR bugfix.
+		var a = 10, b = 20, add1 = 0, addN = 0;				// The env in which a function-body should be executed/run
+		addN = function (n) {								//		is not the env in which it was invoked,
+				var func = 0;								//		but the env in which it was created. 
+				n;
+				func = function (x) { return x + n; };		// Previously (before the bugfix), add1 was called with
+				return func;								// 		the direct parent being the Global env.
+		};
+		add1 = addN(1);										// Now, it is called with parrent env being that of addN,
+		writeln(add1(100) === 101);							//		as it was created in addN''s env.
+															
+															// However, the arguments supplied to a function, must of course,
+															//		be computed in the environment in which it is invoked.
+	''',
+	# -------------------------------------------------------
+	'''	// Test-24: testing math.random()				// This test takes quite too long. Hence is not always run.
+		var dis =[0,0,0,0,0,0,0,0,0,0], i = 0, x = 0,		// dis for distribution (of random samples).
+			mapped = 0,
+			all = function (arr) {
+				var a = 0;
+				for (a = 0; a < len(arr); a += 1) {
+					if (!arr[a]) { return false; }
+				}
+				return true;
+			},
+			map = function(arr, func) {						// This is a BAD defn of `map`
+				var m = 0;									//	as the input array is changed.
+				for (m = 0; m < len(arr); m += 1) {
+					arr[m] = func(arr[m]);
+				}
+				return arr;
+			},
+			within = function(x, y) {
+				return function (n) {
+					return  x < n && n < y;
+				};
+			};
+		for (i = 0; i < 10000; i += 1) {
+			x = math.floor(math.random()*10);
+			dis[x] += 1;
+		}
+		//writeln(dis);
+		mapped = map(dis, within(800, 1200));
+		//writeln(mapped);
+		writeln(all(mapped));
+	''',
 ];
 
 j = -1;
 for prog in tests:
 	j += 1;
-	#if j != 20: continue;
+	print str(j) + '. ',
+	if j == 24: print 'skipped'; continue;					# Commentify this line to not skip Test-24.
+	#if j != 23: continue;
 	#print 'test     -->\n', t, '\n';
 	tokens = lex(prog);
 	#print 'tokens   -->\n', tokens, '\n';
@@ -242,5 +315,4 @@ for prog in tests:
 	rt = Runtime(maxLoopTime=13, maxDepth=100);
 	rt.run('', tree = tree);								# rt.run(prog) would work, but tree would be wastefully recomputed
 	#if j == 8: break;
-	j += 1;
 	#break;

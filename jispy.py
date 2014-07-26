@@ -11,7 +11,7 @@ import sys;
 import math;
 import random;
 isa = isinstance;
-debugOn = False;
+debugOn = True;
 
 def debug(*args):
 	"Helps with debugging. Easily disabled by redefinition."
@@ -100,7 +100,6 @@ def isDecimal(s):
 	
 def lex(s):
 	"Breaks input into a list of tokens. (Lexical Analysis)"
-	debug('lex(..)');
 	spacer = [
 		# Introducing spaces:
 		('=', ' = '), (',', ' , '), (';', ' ; '),
@@ -120,7 +119,6 @@ def lex(s):
 		('>  >', '>>'), ('<  <', '<<'),
 		('*  =', '*='), ('/  =', '/='), ('%  =', '%=')#, 
 	];
-	
 	pat = r'''"(?:[^"\\]|(?:\\.))*"|'(?:[^'\\]|(?:\\.))*'|[^"']*''';
 	matches = re.findall(pat, s + '\n');
 	tokens = [];
@@ -205,6 +203,10 @@ def lex(s):
 					j += 1;
 					m += matches[j]; # append next match;
 				end = m.index('\n', start);
+				comment = m[start : end];
+				if comment.count('"') % 2 == 1 or comment.count("'") % 2 == 1:	# TODO: fix this.
+					print '\ncomment = ', comment, '\n';
+					raise LJSyntaxErr('unbalanced quotes may not appear within comments');
 				m = m[ : start] + m[end : ];
 				#if 'var obj' not in m: assert 1 == 0;
 			lexNS(m);
@@ -270,8 +272,9 @@ def topIndex(li, j, symbo):	# error thrower
 class Function(object):		# for holding function values	# Functions can be completely parsed during sytactic analysis.
 	def __init__(self, params, body):						# There is no need to wait for interpreting.
 		self.params = params;								# This is not true about literal objects and arrays.
-		self.body = body;
-	def __str__ (self):
+		self.body = body;									
+		self.cEnv = None;	# creation ENVironment			# However, the cEnv of a function can be know only at rumtime.
+	def __str__ (self):										# So, for now, we set it to None;
 		return '...function %s %s...' % \
 					(str(self.params), str(self.body));
 	__repr__ = __str__ 	# uncomment for debugging
@@ -279,7 +282,6 @@ class Function(object):		# for holding function values	# Functions can be comple
 def yacc(tokens):
 	"Builds an AST from a list of tokens. (Syntactic Analysis)"
 	tree = []; # AST (Abstract Syntax Tree)
-	debug('yacc(..)', tokens);
 	def parseFunction(expLi, k):							# form:		... function ( a , b )  { ... } ...
 		"Helps parseExp() to parse function expressions."	# indices:		k		 lp		 rp lc	  rc
 		try:
@@ -325,8 +327,6 @@ def yacc(tokens):
 			raise LJSyntaxErr('unexpected var statement');	# In JS, var statements may occur anywhere.
 		semiPos = topIndex(tokens, j, sym(';'));			# This may create an illusion of block-scope, which JS lacks.
 		subtokens = tokens[j+1 : semiPos];					# As a remedy, Jispy allows at most one var statement per scope,
-		if sym('+=') in subtokens or sym('-=') in subtokens:
-			raise LJSyntaxErr('illegal shorthand assignment');
 		inits = topSplit(subtokens, sym(','));				#	and, if used, it must be the very first statement in the scope.
 		for init in inits:									# The uninterned symbol `var?` is used to restrict var statements.
 			try:
@@ -503,7 +503,6 @@ def yacc(tokens):
 	def parseFor(tokens, j):							
 		"Helps yacc(..) in parsing for stmt (as while)."
 		(asgnCl, condCl, incrCl, codeCl, rc) = sepForCls(tokens, j);
-		debug('parseFor(..)', tokens[j : ]);
 		pAsgns = parseForAssignments(asgnCl);				# parsed assignments (from assignment clause)
 		pCond = parseExp(condCl);							# parsed condition
 		pIncrs = parseForAssignments(incrCl);   			# only for error checking
@@ -599,6 +598,7 @@ def makeEnvClass(maxDepth=None): # maxDepth is private
 	class Env(dict):
 		"Defines a scope/context for execution."
 		def __init__(self, params=[], args=[], parent=None):
+			if len(params) != len(args): raise Exception();		# internal error
 			self.update(zip(params, args));
 			self.parent = parent;
 			self.isGlobal = (parent is None);
@@ -610,7 +610,8 @@ def makeEnvClass(maxDepth=None): # maxDepth is private
 				raise Exception();	# internal error
 		def getEnv(self, key):	# used (mostly) internally
 			"Returns environment in which a variable appears."
-			#print 'getEnv on ', self;
+			d = 'Global' if self.isGlobal else self;
+			#print '\nlooking for %s in %s' % (key, d);
 			if key in self:
 				return self;
 			elif not self.isGlobal:
@@ -665,6 +666,13 @@ def run(tree, env, maxLoopTime=None, writer=None):
 	def eval(expLi, env):
 		"Evaluates an expression in an environment."
 		# - - - - - - - - - - - - - - - - - - - - - - - - - - 
+		def setFuncCreationEnvs(expLi):
+			"Set the creation Env (cEnv) for all functions."
+			for elt in expLi:
+				if type(elt) is Function and elt.cEnv == None:	# elt.cEnv may have been previously set due to the recursive
+					elt.cEnv = env;								# 	nature of eval().
+			return expLi;									# Not required, but all other functions return expLi.
+		
 		def subNames(expLi):
 			"Substitutes identifier names w/ their values."
 			#print 'entering subNames, expLi = ', expLi;
@@ -776,14 +784,17 @@ def run(tree, env, maxLoopTime=None, writer=None):
 			else: # ob in [list, str]: (see assert)
 				inter = refineListy(ob, ki);
 			return getRetExpLi(inter);
-			
 		
 		def invokeFunction(func, args):
 			"Helps invokes non-native functions."
 			if len(args) != len(func.params):
 				raise LJTypeErr('incorrect no. of arguments');			
-			Env = type(env);								# has same maxDepth
-			newEnv = Env(func.params, args, env);			# functions have their own scope
+			if func.cEnv is None: raise Exception();		# internal error
+			assert func.cEnv is not None;
+			Env = type(func.cEnv);							# has same maxDepth. Note: type(env) would also work.
+			newEnv = Env(func.params, args, func.cEnv);	# functions have their own scope
+			#print 'old env = ', 'Global' if env.isGlobal else env;
+			#print 'new env = ', newEnv;
 			bodyClone = cloneLi(func.body);					# shields func.body from being mutated
 			try:
 				run(bodyClone, newEnv, maxLoopTime, writer);
@@ -1001,6 +1012,8 @@ def run(tree, env, maxLoopTime=None, writer=None):
 		
 		# - - - - - - - - - - - - - - - - - - - - - - - - - - 
 		
+															#print 'incomming expLi = ', expLi, '\n';
+		expLi = setFuncCreationEnvs(expLi);
 		expLi = subNames(expLi);							#print'leaving subNames, expLi = ', expLi, '\n';
 		expLi = subObjsAndArrs(expLi);						#print'leaving subObjsAndArrs, expLi = ', expLi, '\n';
 		expLi = refine_invoke_and_group(expLi);				#print'leaving r_i_and_g, expLi = ', expLi, '\n';
@@ -1120,13 +1133,14 @@ def builtins(writer):
 	n_str = LJ_str;
 	def n_write(x):
 		"Default output function."
-		if writer: writer(n_str(x));
-		return 0.0;
+		if writer:
+			writer(n_str(x));
+			return True;
+		return False;
 	
 	def n_writeln(x):
 		"Default output function that appends new line."
-		if writer: writer(n_str(x) + '\n');
-		return 0.0;
+		return n_write(n_str(x) + '\n');
 		
 	def n_type(x):
 		"Returns the string name of LJ type."
@@ -1147,14 +1161,24 @@ def builtins(writer):
 		if type(obj) is dict: return obj.keys();
 		raise LJTypeErr('%s has no keys()' % n_type(x));
 	
+	def n_del(obj, key):
+		"Removes a key from an object."
+		if [type(obj), type(key)] != [dict, str]:
+			raise LJTypeErr('del() accepts an object and a string only.');
+		elif key not in obj:
+			raise LJKeyErr(key);
+		# otherwise...
+		obj.pop(key);
+		return True;
+	
 	def isF(*args):
 		"Helps f() check that each argument passed is float."
 		if all(type(n) is float for n in args):
 			return True;
 		raise LJTypeErr('methods of math accept numbers only');
 	
-	def f(func, n):
-		"Creates a function that calls `func` with `n` args."
+	def fm(func, n): # fm <--> Function Math
+		"Creates a mathy function that calls `func` with `n` args."
 		if n == 0:
 			return lambda: func();							# Creating a lambda is required, as all native functions must 
 		if n == 1:											#	be USER DEFINED.
@@ -1168,17 +1192,17 @@ def builtins(writer):
 		'E': e, 'PI': math.pi, 'LN10': math.log(10.0, e), 
 		'LN2': math.log(2.0, e), 'LOG2E': math.log(e, 2.0), 
 		'LOG10E': math.log(e, 10.0), 'SQRT1_2': math.sqrt(0.5),
-		'SQRT2': math.sqrt(2.0),'abs': f(abs, 1),
-		'acos': f(math.acos, 1), 'asin': f(math.asin, 1),
-		'atan': f(math.atan, 1), 'atan2': f(math.atan2, 2),
-		'ceil': f(math.ceil, 1), 'cos': f(math.cos, 1), 
-		'exp': f(math.exp, 1), 'floor': f(math.floor, 1),
+		'SQRT2': math.sqrt(2.0),'abs': fm(abs, 1),
+		'acos': fm(math.acos, 1), 'asin': fm(math.asin, 1),
+		'atan': fm(math.atan, 1), 'atan2': fm(math.atan2, 2),
+		'ceil': fm(math.ceil, 1), 'cos': fm(math.cos, 1), 
+		'exp': fm(math.exp, 1), 'floor': fm(math.floor, 1),
 		'log': lambda x: math.log(x, e) if isF(x) else None,
 		'max': lambda arr: max(arr) if isF(*arr) else None,
 		'min': lambda arr: min(arr) if isF(*arr) else None,
-		'pow': f(pow, 2), 'random': f(random.random, 0),
-		'round': f(round, 1), 'sin': f(math.sin, 1),
-		'sqrt': f(math.sqrt, 1), 'tan': f(math.tan, 1)#,
+		'pow': fm(pow, 2), 'random': fm(random.random, 0),
+		'round': fm(round, 1), 'sin': fm(math.sin, 1),
+		'sqrt': fm(math.sqrt, 1), 'tan': fm(math.tan, 1)#,
 	};
 		
 	loDict = locals();
