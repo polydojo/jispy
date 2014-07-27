@@ -79,6 +79,7 @@ class LJRuntimeErr(LJErr): pass;
 class LJReferenceErr(LJErr): pass;
 class LJKeyErr(LJErr): pass;
 class LJIndexErr(LJErr): pass;
+class LJAssertionErr(LJErr): pass;
 
 def isNameLike(s):
 	"Returns if a token is name-LIKE. 'if' IS name like."
@@ -651,7 +652,7 @@ def LJ_str(x):
 		if x == round(x): return str(int(x));
 		else: return str(x);
 	elif type(x) is str: return x;
-	elif type(x) in [list, dict]:
+	elif type(x) in [list, dict]:							# TODO: Represent inty-floats as ints before calling json.dumps().
 		return json.dumps(x);
 	elif type(x) is Function or inspect.isfunction(x):
 		raise LJTypeErr("functions don't have string equivalents");
@@ -1160,16 +1161,31 @@ def builtins(writer):
 		"Returns an array of keys in an object `obj`."
 		if type(obj) is dict: return obj.keys();
 		raise LJTypeErr('%s has no keys()' % n_type(x));
+		
+	def n_del(x, y):
+		"Deletes from an object or array."
+		if [type(x), type(y)] == [dict, str] and y in x:
+			x.pop(y); 
+			return True;
+		if [type(x), type(y)] == [list, float]:
+			if y == round(y) and 0 <= y < len(x):
+				x.pop(int(y));
+				return True;
+			raise LJIndexErr('invalid array index');
+		raise LJTypeErr('bad call to del()');
 	
-	def n_del(obj, key):
-		"Removes a key from an object."
-		if [type(obj), type(key)] != [dict, str]:
-			raise LJTypeErr('del() accepts an object and a string only.');
-		elif key not in obj:
-			raise LJKeyErr(key);
-		# otherwise...
-		obj.pop(key);
-		return True;
+	def n_concat(li):
+		"Concatenates top-level arrays in an array of arrays."
+		if type(li) is list and all([type(x) is list for x in li]):
+			ans = [];
+			for elt_arr in li: ans += elt_arr;
+			return ans;
+		raise LJTypeErr('concat() accepts an array of arrays');
+	
+	def n_assert(x):
+		"Python-like assert via assert(). Replaces `throw`."
+		if isTruthy(x): return True;
+		raise LJAssertionErr();
 	
 	def isF(*args):
 		"Helps f() check that each argument passed is float."

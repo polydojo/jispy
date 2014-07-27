@@ -268,7 +268,7 @@ tests = [
 															//		be computed in the environment in which it is invoked.
 	''',
 	# -------------------------------------------------------
-	'''	// Test-24: testing math.random()				// This test takes quite too long. Hence is not always run.
+	'''	// Test-24: testing math.random()				// This test takes quite long. Hence is not always run.
 		var dis =[0,0,0,0,0,0,0,0,0,0], i = 0, x = 0,		// dis for distribution (of random samples).
 			mapped = 0,
 			all = function (arr) {
@@ -281,7 +281,7 @@ tests = [
 			map = function(arr, func) {						// This is a BAD defn of `map`
 				var m = 0;									//	as the input array is changed.
 				for (m = 0; m < len(arr); m += 1) {
-					arr[m] = func(arr[m]);
+					arr[m] = func(arr[m]);					// map was written before the inbuilt `concat` was introduced in LJ
 				}
 				return arr;
 			},
@@ -299,6 +299,20 @@ tests = [
 		//writeln(mapped);
 		writeln(all(mapped));
 	''',
+	# -------------------------------------------------------
+	'''	// Test-25: testing del() with arrays
+		var a = [1,2,3];	// len(a) is 3;
+		writeln(del(a, 0) && len(a) === 2);
+	''',
+	# -------------------------------------------------------
+	'''	// Test-26: testing concat()
+		var a = [1,2], b = [3, 4], c = concat([a, b]);
+		writeln(c[0] === 1 && c[1] === 2 && c[2] === 3 &&
+				c[3] === 4 && len(c) === 4);
+	''',
+	# -------------------------------------------------------
+	#''',
+	#'''
 ];
 
 j = -1;
