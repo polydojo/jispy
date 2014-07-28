@@ -1,61 +1,60 @@
-# LittleJ
+# <center>LittleJ</center>
 
-LittleJ (also **LJ**) is a pet name for the subset of JavaScript that Jispy interprets.
+The subset of JavaScript which Jispy interprets is fondly called LittleJ (or **LJ**).
 
 It is a <u>**strict subset of JavaScript**</u>, strict in two senses:
 
 + LittleJ is a **proper subset** of Javascript. Thus,
-    - Ever valid LJ program is also a valid JS program.
-    - Every valid LJ program has the same meaning in JS, as it does in LJ.
+    - Ever valid LittleJ program is also a valid JavaScript program.
+    - Every valid LittleJ program retains its meaning (semantics) in JavaScript.
+    - However, every valid JavaScript program is **NOT** a valid LittleJ program.
 + LittleJ is **far less permissive** than JavaScript.
-    - We shall explore this in depth in the coming sections.
+    - The rest of this specification explores this ascept in depth.
 
-However, keep in mind that:
+**Note:**
 
-- Every valid JS program need not be a valid LJ program.
+- This document and each document linked herein is work in progress. 
+- In particular, inbuilts functions (apart from `type()`) are not described.
+- Although not likely, some specification/feature may change.
 
-**Note:** This document and each document linked herein is work in progress. 
+LittleJ borrows **heavily** from [Douglas Crockford's JS Conventions](http://javascript.crockford.com/code.html). In a few cases, it is stricter (than [JSLint](http://jslint.com/)).
 
-LittleJ borrows heavily from [Douglas Crockford's JS Conventions](http://javascript.crockford.com/code.html).  
-In many cases, LittleJ is infact stricter (than [JSLint](http://jslint.com/)). Only in a few cases, it isn't.
+### <center>Features & Rules</center>
 
-### Features & Rules:
+#### 1. No `undefined`
 
-#### 1. No `undefined` and no `null`;
+All languages have some notion of emptiness. It may be called may it be called `None`, `nil`, `void`, `null` etc. [JavaScript calls it `undefined`; and also has `null` (which indicates *intentional* emptiness.)](http://javascriptweblog.wordpress.com/2010/08/16/understanding-undefined-and-preventing-referenceerrors/)
 
-All languages have some notion of emptiness. It may be called may it be called `null`, `None`, `nil`, `void` etc. [JavaScript calls it `undefined`; and also has `null` (which indicates *intentional* emptiness.)](http://javascriptweblog.wordpress.com/2010/08/16/understanding-undefined-and-preventing-referenceerrors/)
+JavaScript's **overindulgence** in `undefined` *masks otherwise easily detectable errors*. For clarity and ease of understanding, `undefined` is excluded from LittleJ; it is meaningless and may not be used. This has the following implications:
 
-JavaScript's **overindulgence** in `undefined` masks otherwise easily detectable errors. For clarity and ease of understanding, `undefined` and `null` are both meaningless in LittleJ and cannot be used. This means:
-
-+ Every variable must be initialized with a value.
-    - `var x = 0;` is valid.
-    - `var x;` is INVALID.
-+ All functions MUST have a return value.
-    - A non-returning function is a `TypeError`
++ Every variable must be **initialized** with a value, it may not merely be defined.
+    - `var ans = [], x = null, i = 0;` is valid. But,
+    - `var ans = [], x, i = 0;` is **INVALID** because `x` is not initialized.
++ All functions **MUST** have a return value.
+    - A non-returning function causes a `TypeError`
 + You may not pass too many or too few arguments to a function.
     - Passing too many or too few arguments is a `TypeError`.
-    - Thus, the keyword `arguments` is meaningless and CANNOT be used.
+    - Thus, **the keyword `arguments` is meaningless** and cannot be used.
 
 **Note:**  
-Losing `arguments` does not limit a function'sability to accept a variable number of inputs. Via a single array or object, it may receive any number of inputs.
+Losing `arguments` does not limit a function's ability to accept a variable number of inputs. It may receive multiple inputs by accepting a single array or object.
 
 #### 2. No Implied Globals
 
 In JavaScript, any variable which wasn't defined with a `var` statement is assumed to belong to the global scope. Such variables are called implied globals and [are very bad](http://yuiblog.com/blog/2006/06/01/global-domination/).
 
-Here's the remedy in LJ:
+To remedy this problem, in LittleJ:
 
 + All variables must be *initialized* using a `var` statement.
 + Once initialized, they may not be reinitialized (in the same scope.)
     - Trying to do so would cause a `ReferenceError`.
 
 **Note:**  
-While you may not reinitialize a variable, you may always reset its value via assignment.  
-Thus, `var a = 10; a = 11;` is legal. However, `var a = 10, a = 11;` is ILLEGAL.
+While you may not reinitialize a variable, you may always reset its value via (mere) assignment. Thus, `var a = 10; a = 11;` is legal. However, `var a = 10, a = 11;` is **ILLEGAL**.
 
 #### 3. Clean Scoping
 
-JavaScript does NOT have block scope. It has functional scope. Initializing a variable just before its point for first use is very BAD advise in JavaScript.
+*JavaScript does **NOT** have block scope*. It has functional scope. Initializing a variable just before its point for first use is very BAD advise in JavaScript.
 
 In particular,
 > ".. defining variables in blocks can confuse programmers who are experienced with other C family languages. ... " *~ Douglas Crockford*
@@ -68,23 +67,25 @@ LJ's remedy:
     - and it  may **NOT** (re)appear anywhere else in that scope.
 + This is applicable to the global scope as well.
 
-This makes it very difficult to goof up scoping, even for those who don't know about functional scope.
+This makes it very difficult to goof up scoping Even those who don't know about functional scope cannot go wrong.
+
+##### The `null` convention:
+Wherever you would use `var a = [], i` in JavaScript, use `var a = [], i = null` in LittleJ. This makes your intentions very clear. Do so even if you are about to set `i` to `0` in a `for` statement.
 
 #### 4. Functions are first class citizens
 
-Functions are one of the very best parts of JavaScript.  
-In JS and LJ, "functions are first class citizens" means:
+Functions are one of the very best parts of JavaScript. LittleJ is proud to include them. The meaning of the "Functions are first class citizens" is:
 
 + A function may return a function.
 + A function may be passed (as an argument) to a function.
-+ A function may close over other functions.
++ A function may close over other functions. (Closures are supported.)
 
-However, as with most things in JS, there is a bad part associated with function declarations, namely **function hoisting**. It allows you to use functions before you declare them. This unsettles me.
+However, as with most things in JavaScript, there is a (small) bad part associated with function declarations, namely **function hoisting**. It allows you to use functions before you declare them. This unsettles me.
 
 Luckily, function values (created via function expressions) are not hoisted. Therefore, in LittleJ: 
 
-+ Function declarations such as `function foo() { return 1; }` are excluded.
-+ Only function expressions as `foo = function () { return 1; }` are supported.
++ Function declarations such as `function foo() { return null; }` are excluded.
++ Only function expressions as `foo = function () { return null; }` are supported.
 
 When a function is to be invoked immediately, wrap the entire invocation in a pair of parenthesis. This not only makes your intention clear, but is (in some cases) required by JavaScript.
 That is, use:
@@ -95,25 +96,25 @@ instead of:
 ```js function (x) { return x * x; }(2);```
 
 **Note:**  
-Currently, only anonymous functions are supported. This may not change in the near future. (Anonymous functions may be recursive.)
+Currently, only anonymous functions are supported. This is not likely to change in the near future. (Anonymous functions may be recursive.)
 
 #### 5. No `NaN` and no `Infinity`
 
-Like `undefied`, `NaN` and `Infinity` mask too many errors that may otherwise be easily detected. This means:
+Like `undefied`, `NaN` and `Infinity` *mask too many errors that may otherwise be easily detected*. Their exclusion from LittleJ has the following implications:
 
-+ `1 * "a string"` is a `TypeError`, not `NaN`.
++ `1 / "a string"` causes a `TypeError`, it isn't `NaN`.
 + `1 / 0` causes `ZeroDivisionError`, it isn't `Infinity`.
 
-#### `type()` in place of `typeof`
+#### 6. `type()` in place of `typeof`
 
-JavaScript's `typeof` operator is not particularly helpful. In fact, I think its confusing. It has been replaced by a more meaningful `type()` function that comes inbuilt with LittleJ.
+JavaScript's `typeof` operator is not particularly helpful. In fact, it is confusing. In LittleJ, it has been replaced by a more meaningful inbuilt function `type()`.
 
 + `type(x)` may be one of: 
-    - `"boolean"`, `"number"`, `"string"`, `"array"`, `"object"`, `"function"`.
-    - It may **not** be `"undefined"` or `"null"`. (Those are excluded.)
+    - `"boolean"`, `"number"`, `"string"`, `"array"`, `"object"`, `"function"`, `"null"`.
+    - It may **not** be `"undefined"` as that is excluded.
 
 **Note:**  
-LittleJ's `type()` function has a [JavaScript equivalent](http://javascript.crockford.com/code.html). Before running a LittleJ program in JavaScript, `type()` (and a couple of other inbuilts) should be defined in JavaScript. Having done so, LittleJ continues to be a strict subset of JavaScript.
+LittleJ's `type()` function has a [JavaScript equivalent](http://javascript.crockford.com/code.html). Before running a LittleJ program in JavaScript, `type()` (and a few other inbuilts) should be defined in JavaScript. Having done so, LittleJ continues to be a strict subset of JavaScript. The job of so setting-up JavaScript for handling LittleJ programs is done by [equalizeLJ.js](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).
 
 #### 6. Bitwise operators,  along with  `==`, `!=` `++` and `--` are excluded.
 

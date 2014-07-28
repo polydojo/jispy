@@ -11,14 +11,6 @@ import sys;
 import math;
 import random;
 isa = isinstance;
-debugOn = True;
-
-def debug(*args):
-	"Helps with debugging. Easily disabled by redefinition."
-	if not debugOn: return;
-	out = '\n';
-	for a in args: out += str(a) + '\t'
-	print out;
 
 #############################################################
 #					LEXICAL ANALYSIS						#
@@ -27,11 +19,11 @@ def debug(*args):
 class Name(str): pass;		# for holding identifier names
 class Symbol(str): pass;	# for holding keywords and ops
 
-def makeSymbolTable(addBools):
+def makeSymbolTable(addLiterals):
 	"Creates a symbol table."
 	table = {};				# private (via closure)
-	if addBools is True:
-		table = {'true': True, 'false': False};	# private
+	if addLiterals is True:
+		table = {'true': True, 'false': False, 'null': None};	# Note: hash('x') is the same as hash(Symbol('x'))
 	class SymbolTable(object):
 		def __call__(self, s):
 			if s not in table:
@@ -45,7 +37,7 @@ def makeSymbolTable(addBools):
 
 
 iKeywords = '''
-var if else while for break function return true false
+var if else while for break function return true false null
 '''.split();	# list of implemented keywords
 
 uKeywords = '''
@@ -55,19 +47,19 @@ switch this throw try typeof void with yield
 enum
 implements package protected static interface private public
 
-Infinity NaN undefined null
+Infinity NaN undefined
 '''.split();	# list of unimplemented keywords (and globals)
 
 keywords = iKeywords + uKeywords;
 
-sym = makeSymbolTable(addBools = True); # true, false
+sym = makeSymbolTable(addLiterals = True); # true, false, null
 map(sym, iKeywords);
 map(sym, list('()[]!*/%+-><=,;{:}'));
 map(sym, '>= <= === !== && ||'.split());
 map(sym, '+= -='.split());
 # Note: '.' (dot) is not a symbol
 
-badsym = makeSymbolTable(addBools = False);
+badsym = makeSymbolTable(addLiterals = False);
 map(badsym, '== != << >> *= /= %= ++ --'.split());
 map(badsym, uKeywords);
 #############################################################
@@ -83,6 +75,7 @@ class LJAssertionErr(LJErr): pass;
 
 def isNameLike(s):
 	"Returns if a token is name-LIKE. 'if' IS name like."
+	if s == '_': return True; # exception for underbar.js
 	return re.findall(r'[a-z]\w*', s) == [s] and s[-1] != '_';
 
 def isValidName(s):
@@ -206,7 +199,7 @@ def lex(s):
 				end = m.index('\n', start);
 				comment = m[start : end];
 				if comment.count('"') % 2 == 1 or comment.count("'") % 2 == 1:	# TODO: fix this.
-					print '\ncomment = ', comment, '\n';
+					#print '\ncomment = ', comment, '\n';
 					raise LJSyntaxErr('unbalanced quotes may not appear within comments');
 				m = m[ : start] + m[end : ];
 				#if 'var obj' not in m: assert 1 == 0;
@@ -588,8 +581,8 @@ def cloneLi(li):
 def isFalsy(val):											# Python and JS have (slightly) different ideas of falsehood.
 		"Tells if a value is falsy."						# [] and {} are falsy in python, but truthy is JS.
 		if not hasattr(val, '__call__'):
-			assert type(val) in [bool, float, str, list, dict, Function];
-		return val in [False, 0.0, ''];
+			assert type(val) in [bool, float, str, list, dict, Function, type(None)];
+		return val in [False, 0.0, '', None];
 	
 def isTruthy(val):
 		"Tells is a value is truthy."
@@ -646,6 +639,7 @@ class LJBreak(LJJump): pass;
 
 def LJ_str(x):
 	"LJ's str() function. Also used in run() below & in builtins()."
+	if x is None: return 'null';
 	if type(x) is bool:
 		return 'true' if x else 'false';
 	elif type(x) is float:
@@ -810,7 +804,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 			if len(args) != nParams:
 				raise LJTypeErr('incorrect no. of arguments');
 			inter = func(*args);
-			types = [bool, float, str, list, dict, Function];
+			types = [bool, float, str, list, dict, Function, type(None)];
 			if type(inter) in types or inspect.isfunction(inter):
 				return inter;	# intermediate result
 			raise Exception('non-returning native function');			
@@ -904,7 +898,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 			isT = isTruthy;									# Note: JS and python have different ideas of falsehood
 			def eqeqeq(x, y):								# Note: In python, `1.0 is 1.0` --> True
 				if type(x) != type(y) : return False;		#		But, `a = 1.0; b = 1.0; a is b` --> False
-				if type(y) in [bool, float, str]:			#		Thus `is` in py is NOT the same as `===` in JS
+				if type(y) in [bool, float, str, type(None)]:#		Thus `is` in py is NOT the same as `===` in JS
 					return x == y;
 				refTypes = [list, dict, Function];
 				assert type(y) in refTypes or inspect.isfunction(y);
@@ -1013,7 +1007,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 		
 		# - - - - - - - - - - - - - - - - - - - - - - - - - - 
 		
-															#print 'incomming expLi = ', expLi, '\n';
+		None;												#print 'incomming expLi = ', expLi, '\n';
 		expLi = setFuncCreationEnvs(expLi);
 		expLi = subNames(expLi);							#print'leaving subNames, expLi = ', expLi, '\n';
 		expLi = subObjsAndArrs(expLi);						#print'leaving subObjsAndArrs, expLi = ', expLi, '\n';
@@ -1027,10 +1021,11 @@ def run(tree, env, maxLoopTime=None, writer=None):
 				oldLen = newLen;
 			else:
 				errStr = ' '.join(map(str, expLi));
-				raise LJErr('illegal expression ' + errStr);
+				#raise LJErr('illegal expression ' + errStr);
+				raise LJErr('illegal expression %s' % expLi);
 		# having finished looping...
 		ans = expLi[0];
-		LJTypes = [bool, float, str, list, dict, Function];
+		LJTypes = [bool, float, str, list, dict, Function, type(None)];
 		if not (type(ans) in LJTypes or inspect.isfunction(ans)):
 			raise LJTypeErr('illegal expression (of unknown type)');
 		return ans;	# end eval(..)				
@@ -1105,7 +1100,8 @@ def run(tree, env, maxLoopTime=None, writer=None):
 		'Helps eval exp-stmts like `writeln("Hi!");`'
 		[_, expLi] = stmt;
 		ans = eval(expLi, env);
-		if writer: writer(LJ_str(ans) + '\n');
+		if writer and ans != None and env.isGlobal:
+			writer(LJ_str(ans) + '\n');
 		return ans;
 	
 	# -------------------------------------------------------
@@ -1132,24 +1128,21 @@ def builtins(writer):
 	"Adds built-in functions like type(), len(), keys() etc."
 	global LJ_str;											# n_ in the following functions/variables indicates NATIVE
 	n_str = LJ_str;
-	def n_write(x):
-		"Default output function."
-		if writer:
-			writer(n_str(x));
-			return True;
-		return False;
 	
-	def n_writeln(x):
+	def n_print(x):
 		"Default output function that appends new line."
-		return n_write(n_str(x) + '\n');
-		
+		if writer: writer(n_str(x) + '\n');
+		else: raise LJReferenceErr('writeln is not defined');
+		return None; # null
+	
 	def n_type(x):
 		"Returns the string name of LJ type."
 		if inspect.isfunction(x): return 'function';
 		return { # pythonic switch
 			bool:	'boolean',	float: 		'number',
 			str:	'string',	list:		'array',
-			dict:	'object',	Function:	'function'#,
+			dict:	'object',	Function:	'function',
+			type(None): 'null'#,
 		}[type(x)];			
 	
 	def n_len(x):
@@ -1157,35 +1150,34 @@ def builtins(writer):
 		if type(x) in [str, list, dict]: return float(len(x));
 		raise LJTypeErr('%s has no len()' % n_type(x));
 	
-	def n_keys(obj):
+	def n_keys(dicty):
 		"Returns an array of keys in an object `obj`."
-		if type(obj) is dict: return obj.keys();
-		raise LJTypeErr('%s has no keys()' % n_type(x));
+		if type(dicty) is dict: return dicty.keys();
+		raise LJTypeErr('%s has no keys()' % n_type(dicty));
 		
 	def n_del(x, y):
 		"Deletes from an object or array."
-		if [type(x), type(y)] == [dict, str] and y in x:
-			x.pop(y); 
-			return True;
+		if [type(x), type(y)] == [dict, str]:
+			if y in x:
+				x.pop(y); 
+				return True;
+			raise LJKeyErr('del() called with non-existent key');
 		if [type(x), type(y)] == [list, float]:
 			if y == round(y) and 0 <= y < len(x):
 				x.pop(int(y));
 				return True;
-			raise LJIndexErr('invalid array index');
+			raise LJIndexErr('invalid array index passed to del()');
 		raise LJTypeErr('bad call to del()');
 	
-	def n_concat(li):
-		"Concatenates top-level arrays in an array of arrays."
-		if type(li) is list and all([type(x) is list for x in li]):
-			ans = [];
-			for elt_arr in li: ans += elt_arr;
-			return ans;
-		raise LJTypeErr('concat() accepts an array of arrays');
-	
-	def n_assert(x):
+	def n_append(li, elt):
+		if type(li) is list: li.append(elt);
+		else: raise LJTypeErr('cannot append() to non-array');
+		return None; # null
+		
+	def n_assert(exp, msg):
 		"Python-like assert via assert(). Replaces `throw`."
-		if isTruthy(x): return True;
-		raise LJAssertionErr();
+		if isTruthy(exp): return None; # null
+		raise LJAssertionErr(n_str(msg));
 	
 	def isF(*args):
 		"Helps f() check that each argument passed is float."
@@ -1234,7 +1226,7 @@ def builtins(writer):
 
 def addNatives(env, dicty):
 	"Adds to the environment env."
-	okTypes = [bool, float, str, list, dict, Function]		# py-function excluded
+	okTypes = [bool, float, str, list, dict, Function, type(None)]		# py-function excluded
 	for key in dicty:
 		name = Name(key);
 		if name in env:
