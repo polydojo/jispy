@@ -30,7 +30,7 @@
         if (expr) { return null; }
         throw new Error('AssertionError: ' + global.str(msg));
     };
-    global.ord = function (c) { return c.charCodeAt[0]; };
+    global.ord = function (c) { return c.charCodeAt(0); };
     global.chr = function (i) { return String.fromCharCode(i); };
     global.math = Math;
 }(this));
