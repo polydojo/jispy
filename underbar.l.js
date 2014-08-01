@@ -1,11 +1,15 @@
 // The following is written in pure LittleJ.
 // It is meant to evolve into an Underscore.js like library.
 
-var makeUnderbar = function () {
-    var string = {}, array = {}, object = {}, _ = {}, x = 'Hello ', y = 'World!!';    
+var buildUtils = function () {
+    var string = {}, array = {}, object = {}, _ = {}, x = 'Hello ', y = 'World!!';
+    // string, array and object are holders for ES5 natives.
     
-    //In general, s denotes a string, a an array, o an object and f a function.
+    // Generally, s denotes string, a array, o object and f function.
     
+    ////////////////////////////////////////////////////////////////////////////
+    // Writing ES5 natives.
+    ////////////////////////////////////////////////////////////////////////////
     string.charCodeAt = function (s, i) { return ord(s[i]); };   
     string.concat = function (s1, s2) { return s1 + s2; };
     string.slice = function (s, p1, p2) {
@@ -182,7 +186,7 @@ var makeUnderbar = function () {
     };
     array.forEach = function (a, f) {
         var i = null;
-        for (i = 0; i < len(a); i += 1) { a[i] = f(a[i]); }
+        for (i = 0; i < len(a); i += 1) { f(a[i]); }
         return null;
     };
     array.map = function (a, f) {
@@ -210,5 +214,5 @@ var makeUnderbar = function () {
     object.keys = keys;
     object.hasOwnProperty = function (o, s) { return array.indexOf(keys(o), s, null) !== -1; };
     
-    print(len(string) + len(array) + len(object));
+    print(len(array) + len(string) + len(object));
 return _;}();

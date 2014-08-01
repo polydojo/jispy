@@ -3,7 +3,7 @@
     global.keys = Object.keys;
     global.type = function (x) {
         if (x === null) { return 'null'; }
-        if (typeof x === 'object' && Object.prototype.toString.call(x) === '[object Array]') { return 'array'; }
+        if (Object.prototype.toString.call(x) === '[object Array]') { return 'array'; }
         return typeof x;
     };
     global.str = function (x) {
@@ -15,7 +15,7 @@
         return null;
     };
     global.len = function (x) {
-        if (global.type(x) === 'object') { return Object.keys(x).length; }
+       if (global.type(x) === 'object') { return Object.keys(x).length; }
         return x.length;
     };
     global.del = function (x, y) {

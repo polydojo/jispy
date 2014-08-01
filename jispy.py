@@ -75,7 +75,7 @@ class LJAssertionErr(LJErr): pass;
 
 def isNameLike(s):
     "Returns if a token is name-LIKE. 'if' IS name like."
-    if s == '_': return True; # exception for underbar.js
+    if s == '_' or s == '$': return True;
     return re.findall(r'[a-z]\w*', s) == [s] and s[-1] != '_';
 
 def isValidName(s):
@@ -246,6 +246,10 @@ def topSplit(li, symbo):                                        # Consider: `add
             j += 1;
     return ans;
 
+def isTopIn(li, symbo):
+    "Tells if symbo is a top-level-symbol in list li."
+    return len(topSplit(li, symbo)) != 1;
+
 def topIndex(li, j, symbo):    # error thrower                    # Bugfix:
     "Gives index of TOP-LEVEL occurence of symbo, starting at j." # Originally, topIndex accepted a list of symbols `syms` to
     oBrackets = [sym('('), sym('{'), sym('[')];                   # to split on. If a non-list x was passed, it'd set syms = [x].
@@ -267,10 +271,10 @@ class Function(object):        # for holding function values  # Functions can be
         self.params = params;                                 # This is not true about literal objects and arrays.
         self.body = body;                                     
         self.crEnv = None;    # creation ENVironment          # However, the crEnv of a function can be know only at rumtime.
-    #def __str__ (self):                                      # So, for now, we set it to None;
-    #    return '...function %s %s...' % \
-    #                (str(self.params), str(self.body));
-    #__repr__ = __str__     # uncomment for debugging
+    def __str__ (self):                                      # So, for now, we set it to None;
+        return '...function %s %s...' % \
+                    (str(self.params), str(self.body));
+    __repr__ = __str__     # uncomment for debugging
 
 def yacc(tokens):
     "Builds an AST from a list of tokens. (Syntactic Analysis)"
@@ -537,10 +541,14 @@ def yacc(tokens):
             stmt = tokens[j : semiPos];
             if not stmt:
                 raise LJSyntaxErr('empty statement');
-            if sym('=') in stmt:
+            #if sym('=') in stmt:
+            #    parseAssign(stmt);
+            #elif sym('+=') in stmt or sym('-=') in stmt:
+            #    parseShortAssign(stmt); 
+            if isTopIn(stmt, sym('=')):
                 parseAssign(stmt);
-            elif sym('+=') in stmt or sym('-=') in stmt:
-                parseShortAssign(stmt); 
+            elif isTopIn(stmt, sym('+=')) or isTopIn(stmt, sym('-=')):
+                parseShortAssign(stmt);
             else:
                 parseExpStmt(stmt);
             j = semiPos + 1;
@@ -1289,6 +1297,7 @@ class Runtime(object):
             tree = yacc(lex(prog));
         else:
             raise TypeError('bad input to Runtime.run()');
+        #print tree;
         tmp = self.writer if console else None;
         run(tree, env, self.maxLoopTime, tmp);
     
