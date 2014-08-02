@@ -267,14 +267,17 @@ def topIndex(li, j, symbo):    # error thrower                    # Bugfix:
 #############################################################
 
 class Function(object):        # for holding function values  # Functions can be completely parsed during sytactic analysis.
-    def __init__(self, params, body):                         # There is no need to wait for interpreting.
+    def __init__(self, params, tree, iTokens):                # There is no need to wait for interpreting.
         self.params = params;                                 # This is not true about literal objects and arrays.
-        self.body = body;                                     
+        self.tree = tree;                                     
+        self.iTokens = iTokens;
         self.crEnv = None;    # creation ENVironment          # However, the crEnv of a function can be know only at rumtime.
     def __str__ (self):                                      # So, for now, we set it to None;
         return '...function %s %s...' % \
-                    (str(self.params), str(self.body));
+                    (str(self.params), str(self.tree));
     __repr__ = __str__     # uncomment for debugging
+
+eMsgr = lambda li: ' ... ' + ' '.join(map(lj_repr, li));
 
 def yacc(tokens):
     "Builds an AST from a list of tokens. (Syntactic Analysis)"
@@ -297,8 +300,8 @@ def yacc(tokens):
         except (ValueError, AssertionError):
             #print 'func ExpLI = ', expLi;
             raise LJSyntaxErr('bad function literal');
-        bodyTokens = [sym('var?')] + expLi[lc + 1 : rc];    # list of body tokens (non-alias)
-        func = Function(params, yacc(bodyTokens));
+        iTokens = [sym('var?')] + expLi[lc + 1 : rc];    # list of body tokens (non-alias)
+        func = Function(params, yacc(iTokens), iTokens);
         expLi = expLi[ : k] + [func] + expLi[rc + 1 : ];    # DO NOT DIRECTLY RETURN THE RHS EXPRESSION. It is less readable.
         return expLi;                                       # Substitute an instance of Function in place of function literal
     
@@ -429,7 +432,7 @@ def yacc(tokens):
                         break;
         except AssertionError:
             print 'expLi = ', expLi;
-            raise LJSyntaxErr('illegal LHS in assignment %s' %expLi);
+            raise LJTypeErr('illegal LHS in assignment' + eMsgr(expLi));
         return None;
     
     def parseAssign(stmt, tree=tree): # Relies on checkLhsExp  # form:         a[0] = 1 + b + c ;
@@ -441,7 +444,7 @@ def yacc(tokens):
             rhsExp = parseExp(stmt[eqSign + 1 : ]);          #        has been written to do so exclusively, which 
             checkLhsExp(lhsExp);                             #        converts a shorthand assignment to an assignment
         except AssertionError:                               #        via parseAssign().
-            raise LJSyntaxErr('illegal assignment %s' % stmt);
+            raise LJTypeErr('illegal LHS in assignment' + eMsgr(stmt));
         tree.append(['assign', lhsExp, rhsExp]);
         return None;
     
@@ -649,21 +652,30 @@ class LJJump(Exception):
 class LJReturn(LJJump): pass;
 class LJBreak(LJJump): pass;
 
-def LJ_str(x):
-    "LJ's str() function. Also used in run() below & in builtins()."
+def lj_repr(x):
     if x is None: return 'null';
-    if type(x) is bool:
-        return 'true' if x else 'false';
-    elif type(x) is float:
+    if type(x) is bool: return 'true' if x else 'false';
+    if type(x) is float:
         if x == round(x): return str(int(x));
         else: return str(x);
-    elif type(x) is str: return x;
-    elif type(x) in [list, dict]:                             # TODO: Represent inty-floats as ints before calling json.dumps().
-        return json.dumps(x);
-    elif type(x) is Function or inspect.isfunction(x):
-        raise LJTypeErr("functions don't have string equivalents");
-    raise Exception(); # internal error
-
+    if type(x) is str:
+        return '"' + x.replace('"', '\\"') + '"'; 
+    if type(x) in [Name, Symbol]: return x;
+    if type(x) is list:
+        out = '[';
+        for elt in x: out += lj_repr(elt) + ', ';
+        out = out[ : -2]; # shave off trailing ", "
+        return out + ']';
+    if type(x) is dict:
+        out = '{';
+        for k in x: out += lj_repr(k) + ': ' + lj_repr(x[k]) + ', ';
+        out = out[ : -2]; # shave off trailing ", "
+        return out + '}';
+    if type(x) is Function:
+        return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(str, x.iTokens[1:])) + ' }';
+    if inspect.isfunction(x):
+        return 'function () { [native code] }'
+    assert False;
 #############################################################
 
 def run(tree, env, maxLoopTime=None, writer=None):
@@ -765,13 +777,13 @@ def run(tree, env, maxLoopTime=None, writer=None):
             "Helps with list and string refinements."
             msg = 'array' if type(li) is list else 'string';
             if type(ind) is not float:
-                raise LJTypeErr(msg + ' indices must be numbers');
+                raise LJTypeErr(msg + ' indices must be numbers ... ' + lj_repr(i));
             elif ind < 0:
-                raise LJTypeErr(msg + ' indices must be non-negative');
+                raise LJTypeErr(msg + ' indices must be non-negative ... ' + lj_repr(i));
             elif ind != round(ind):
-                raise LJTypeErr(msg + ' indices must integers');
+                raise LJTypeErr(msg + ' indices must integers ... ' + lj_repr(i));
             elif ind >= len(li):
-                raise LJIndexErr(msg + ' index out of range');
+                raise LJIndexErr(msg + ' index out of range ... ' + lj_repr(ind));
             return li[int(ind)];    # intermediate result
         
         def refine(expLi, j):                                # form:        ... <py-dict-or-list> [   10   ] ...
@@ -796,16 +808,16 @@ def run(tree, env, maxLoopTime=None, writer=None):
             "Helps invokes non-native functions."
             if len(args) != len(func.params):
                 print 'args = ', args;
-                raise LJTypeErr('incorrect no. of arguments %s' % args);            
+                raise LJTypeErr('incorrect no. of arguments ... (%s)' % lj_repr(args)[1:-1]);            
             if func.crEnv is None: raise Exception();        # internal error
             assert func.crEnv is not None;
             newEnv = func.crEnv.makeChild(func.params, args);   # A function's parent scope is the one in which it was created.
             #print 'old env = ', 'Global' if env.isGlobal else env;
             #print 'new env = ', newEnv;
-            bodyClone = cloneLi(func.body);                    # shields func.body from being mutated
+            treeClone = cloneLi(func.tree);                    # shields func.tree from being mutated
             #print 'bodyClone = ', bodyClone, '\n';
             try:
-                run(bodyClone, newEnv, maxLoopTime, writer);
+                run(treeClone, newEnv, maxLoopTime, writer);
                 #print('about to exit invokeFunc...`try` block w/ no return');
             except LJReturn as r:
                 #print('in except block of invokeFunc.. due to return, retval = %s' % r.args[0]);
@@ -882,8 +894,8 @@ def run(tree, env, maxLoopTime=None, writer=None):
                 #print 'leaving  rig expLi = ', expLi;
             return expLi;
                 
-        def unop(expLi, op, j):                              # form:        ... op value ...    
-            "Evaluate a unary-operator-using expression."    # indices:         j
+        def unop(expLi, op, j):                               # form:        ... op value ...    
+            "Evaluates a single unary expression like !true." # indices:         j
             #print 'entering unop, expLi = ', expLi;
             try:    
                 valExpLi = [expLi[j + 1]];
@@ -930,8 +942,8 @@ def run(tree, env, maxLoopTime=None, writer=None):
             "Helps binop(..) with string and number operations."
             #print 'entering strNumBinop, expLi = ', expLi;
             return {                                        
-                sym('>='): lambda x, y: x >= y,                # Note:    `1 < "king"` is `True` in python but `false` in JS
-                sym('<='): lambda x, y: x <= y,                #    Thus, type equality IS necessary for meaningful use of these ops.
+                sym('>='): lambda x, y: x >= y,            # Note:    `1 < "king"` is `True` in python but `false` in JS
+                sym('<='): lambda x, y: x <= y,            #    Thus, type equality IS necessary for meaningful use of these ops.
                 sym('>'): lambda x, y: x > y,
                 sym('<'): lambda x, y: x < y,
                 sym('+'): lambda x, y: x + y,
@@ -961,7 +973,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
             else: pass;                                         # We shall not be a part of this madness!!
         
         def binop(expLi, op, j):                                # form:        ... value0 op value1 ...
-            "Evaluates a binary-operator-using expression."     # indices:                j
+            "Evaluates a single binary expression like 1 + 1."  # indices:                j
             #print 'entering binop, expLi = ', expLi;
             def getRetExpLi(inter):
                 return expLi[ : j-1] + [inter] + expLi[j+2 : ];              j
@@ -987,12 +999,11 @@ def run(tree, env, maxLoopTime=None, writer=None):
                     assert op in numOps;
                     inter = numBinop(a, op, b);
                     return getRetExpLi(inter);
-            raise LJTypeErr('bad operands for binary ' + op + 'expLi = ' + str(expLi));
-    
-        def simpleEval(expLi):
-            "Evaluates unary and binary operations."
-            #print 'entering simpleEval, expLi = ', expLi;
-            # UNARY (right-to-left):
+            raise LJTypeErr('bad operands for binary ' + op + eMsgr(expLi));
+        
+        def allUnary(expLi):
+            "Evaluates all unary expressions in expLi."
+            # UNARY (right to left)
             j = len(expLi) - 1;            
             while j >= 0:
                 if expLi[j] is sym('!'):
@@ -1002,25 +1013,40 @@ def run(tree, env, maxLoopTime=None, writer=None):
                         expLi = unop(expLi, sym('-'), j);
                     else: pass;    # binary subtraction
                 elif expLi[j] is sym('+'):
-                    if j == 0 or type(expLi[j - 1]) not in [float, str]:
+                    #if j == 0 or type(expLi[j - 1]) not in [float, str]:
+                    if j == 0 or type(expLi[j - 1]) is Symbol:
                         expLi = unop(expLi, sym('+'), j);
                     else: pass; # binary addition
                 else: pass;        # ignore token
                 j -= 1;
+            return expLi;
+            
+        def allBinary(expLi):
+            "Evaluates all binary expressions in expLi."
             # BINARY (left-to-right):
-            binSyms = map(sym, list('*/%+-><'));
-            binSyms += map(sym, '>= <= === !== && ||'.split());
-            # binSyms are arranged in order of precedence
-            for op in binSyms:
+            precedence = [
+                [sym('*'), sym('/'), sym('%')],             # Note: ['*', '/', '%'] would also work just fine.
+                [sym('+'), sym('-')],                       # Because, in Python
+                [sym('>='), sym('<='), sym('>'), sym('<')], # ``` class S(str): pass;
+                [sym('==='), sym('!==')],                   #     s = S('king');  
+                [sym('&&')],                                #     s == 'king'; # ==> True
+                [sym('||')]#,
+            ];
+            for level in precedence:
+                #print expLi, level;
                 j = 0;
                 while j < len(expLi):
-                    if expLi[j] is op:
-                        expLi = binop(expLi, op, j);
-                        # j = j; do not increment !!
+                    if expLi[j] in level and type(expLi[j]) is Symbol:
+                        expLi = binop(expLi, expLi[j], j);
+                        #j = j; do not increment!!
                     else:
                         j += 1;
+                if len(expLi) == 1: break;
             return expLi;
-        
+    
+        def simpleEval(expLi):                              # TODO: remove this method.
+            "Evaluates unary and binary operations."
+            return(allBinary(allUnary(expLi)));
         # - - - - - - - - - - - - - - - - - - - - - - - - - - 
         
         None;                                                #print 'incomming expLi = ', expLi, '\n';
@@ -1037,8 +1063,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
                 oldLen = newLen;
             else:
                 errStr = ' '.join(map(str, expLi));
-                #raise LJErr('illegal expression ' + errStr);
-                raise LJErr('illegal expression %s' % expLi);
+                raise LJErr('illegal expression' + eMsgr(expLi));
         # having finished looping...
         ans = expLi[0];
         LJTypes = [bool, float, str, list, dict, Function, type(None)];
@@ -1102,7 +1127,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
             eval(lExpLi, env);        # checks range and roundness
             objarr[int(innexp)] = rhsExp;
         else:    # Note: strings are immutable
-            raise LJTypeErr('illegal LHS in assignment %s' % stmt);
+            raise LJTypeErr('illegal LHS in assignment' + eMsgr(stmt));
     
     def runAssign(stmt, env):
         "Helps exec variable assignment."
@@ -1119,7 +1144,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
         [_, expLi] = stmt;
         ans = eval(expLi, env);
         if writer and ans != None and env.isGlobal:
-            writer(LJ_str(ans) + '\n');
+            writer(lj_repr(ans) + '\n');
         return ans;
     
     # -------------------------------------------------------
@@ -1144,9 +1169,27 @@ def run(tree, env, maxLoopTime=None, writer=None):
 #############################################################
 def builtins(writer):
     "Adds built-in functions like type(), len(), keys() etc."
-    global LJ_str;                                            # n_ in the following functions/variables indicates NATIVE
-    n_str = LJ_str;
-    
+    # n_ in the following functions/variables indicates NATIVE
+    '''
+    def n_str(x):
+        "Returns string form of input"
+        if x is None: return 'null';
+        if type(x) is bool:
+            return 'true' if x else 'false';
+        elif type(x) is float:
+            if x == round(x): return str(int(x));
+            else: return str(x);
+        elif type(x) is str: return x;
+        elif type(x) in [list, dict]:
+            return json.dumps(x);
+        elif type(x) is Function or inspect.isfunction(x):
+            raise LJTypeErr("functions don't have string equivalents");
+        raise Exception(); # internal error
+    '''
+    def n_str(x):
+        "Returns the string form of input."
+        if type(x) is str: return x;
+        return lj_repr(x); 
     def n_print(x):
         "Default output function that appends new line."
         if writer: writer(n_str(x) + '\n');
@@ -1298,8 +1341,17 @@ class Runtime(object):
         else:
             raise TypeError('bad input to Runtime.run()');
         #print tree;
-        tmp = self.writer if console else None;
-        run(tree, env, self.maxLoopTime, tmp);
+        writer = self.writer if console else None;
+        try: run(tree, env, self.maxLoopTime, writer);
+        except LJErr as e:
+            print('%s: %s' % (type(e).__name__[2:] + 'or' , e))
+        except LJJump as e:
+            if isa(e, LJReturn):
+                print('SyntaxError: unexpected return statement');
+            elif isa(e, LJBreak):
+                print('SyntaxError: unexpected break statement');
+            else:
+                raise e; # unexpected
     
     def runG(self, prog, console=False):                            # Note: run(prog) and runG(prog) 
         "Runs the program in the Runtime's global environment."     #       have exactly the same effect.
@@ -1322,28 +1374,21 @@ def console(prompt='jispy> ', rt=None, semify=False):       # semify __tries__ t
         inp += '\n';
         try: inp += raw_input(prompt) ;
         except (EOFError):
-            print('\n');
+            print('');
             return;
         if not inp.endswith('\t'):
             tmp = inp;    inp = '';
             if not semify: pass;
             elif tmp.endswith(';') or tmp.endswith('}'): pass;
             else: tmp += ';';
-            try:
-                rt.run(tmp, console=True);
-            except LJErr as e:
-                print('%s: %s' % (type(e).__name__[2:] + 'or' , e))
-            except LJJump as e:
-                if isa(e, LJReturn):
-                    print('SyntaxError: unexpected return statement');
-                elif isa(e, LJBreak):
-                    print('SyntaxError: unexpected break statement');
-                else:
-                    raise Exception(); # internal error
+            rt.run(tmp, console=True);
             prompt = original_prompt
         else:
             prompt = '.' * (len(prompt) - 1) + ' ' ;
             pass; # continue;
+
+if __name__ == '__main__':
+    console();
         
 
 #############################################################

@@ -2,7 +2,8 @@
 // It is meant to evolve into an Underscore.js like library.
 
 var buildUtils = function () {
-    var string = {}, array = {}, object = {}, _ = {}, x = 'Hello ', y = 'World!!';
+    var string = {}, array = {}, object = {},
+    _ = {}, pvt = {}, x = 'Hello ', y = 'World!!';
     // string, array and object are holders for ES5 natives.
     
     // Generally, s denotes string, a array, o object and f function.
@@ -10,8 +11,6 @@ var buildUtils = function () {
     ////////////////////////////////////////////////////////////////////////////
     // Writing ES5 natives.
     ////////////////////////////////////////////////////////////////////////////
-    string.charCodeAt = function (s, i) { return ord(s[i]); };   
-    string.concat = function (s1, s2) { return s1 + s2; };
     string.slice = function (s, p1, p2) {
         var ans = '', i = null;
         if (p1 === null) { p1 = 0; }
