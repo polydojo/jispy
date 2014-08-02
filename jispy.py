@@ -208,8 +208,10 @@ def lex(s):
     return [sym('var?')] + tokens;                             # UNINTERNED symbol, indicating that a var statement may follow.
 
 #############################################################
-#                    SYNTACTIC ANALYSIS                        #
+#                    SYNTACTIC ANALYSIS                     #
 #############################################################
+
+eMsgr = lambda li: ' ... ' + ' '.join(map(lj_repr, li));
 
 def gmb(seq, i): # Get Matching (Closing) Bracket
     "Get index of right bracket, matching left bracket at i."
@@ -262,7 +264,7 @@ def topIndex(li, j, symbo):    # error thrower                    # Bugfix:
             return j;
         else:
             j += 1;
-    raise LJSyntaxErr('expected ' + symbo);
+    raise LJSyntaxErr('expected ' + symbo + eMsgr(li));
 
 #############################################################
 
@@ -276,8 +278,6 @@ class Function(object):        # for holding function values  # Functions can be
         return '...function %s %s...' % \
                     (str(self.params), str(self.tree));
     __repr__ = __str__     # uncomment for debugging
-
-eMsgr = lambda li: ' ... ' + ' '.join(map(lj_repr, li));
 
 def yacc(tokens):
     "Builds an AST from a list of tokens. (Syntactic Analysis)"
@@ -431,7 +431,6 @@ def yacc(tokens):
                         assert ls - 1 == 0;
                         break;
         except AssertionError:
-            print 'expLi = ', expLi;
             raise LJTypeErr('illegal LHS in assignment' + eMsgr(expLi));
         return None;
     
@@ -662,17 +661,20 @@ def lj_repr(x):
         return '"' + x.replace('"', '\\"') + '"'; 
     if type(x) in [Name, Symbol]: return x;
     if type(x) is list:
+        if not x: return '[]' # corner case (see shaving)
         out = '[';
         for elt in x: out += lj_repr(elt) + ', ';
         out = out[ : -2]; # shave off trailing ", "
         return out + ']';
     if type(x) is dict:
+        if not x: return '{}'; # corner case
         out = '{';
         for k in x: out += lj_repr(k) + ': ' + lj_repr(x[k]) + ', ';
         out = out[ : -2]; # shave off trailing ", "
         return out + '}';
     if type(x) is Function:
-        return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(str, x.iTokens[1:])) + ' }';
+        print x.iTokens[1:];
+        return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(lj_repr, x.iTokens[1:])) + ' }';
     if inspect.isfunction(x):
         return 'function () { [native code] }'
     assert False;
@@ -719,8 +721,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
                     assert type(key) is str;                 # JS keys MUST be strings. Numbers & booleans are coerced to strings.
                     assert pair[1] is sym(':');
                 except AssertionError :
-                    print 'expLi = ', expLi;
-                    raise LJSyntaxErr('illegal object literal');
+                    raise LJSyntaxErr('illegal object literal' + eMsgr(expLi));
                 valueLi = pair[2 : ];
                 obj[key] = eval(valueLi, env);
             expLi = expLi[ : j] + [obj] + expLi[rc + 1 : ];
@@ -807,7 +808,6 @@ def run(tree, env, maxLoopTime=None, writer=None):
         def invokeFunction(func, args):
             "Helps invokes non-native functions."
             if len(args) != len(func.params):
-                print 'args = ', args;
                 raise LJTypeErr('incorrect no. of arguments ... (%s)' % lj_repr(args)[1:-1]);            
             if func.crEnv is None: raise Exception();        # internal error
             assert func.crEnv is not None;
@@ -1072,7 +1072,6 @@ def run(tree, env, maxLoopTime=None, writer=None):
         return ans;    # end eval(..)                
 
     # *********************************************
-    
     def runInit(stmt, env):
         "Helps exec an init `var a = 10;` statement."
         [_, name, expLi] = stmt;

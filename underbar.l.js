@@ -1,151 +1,168 @@
-// The following is written in pure LittleJ.
-// It is meant to evolve into an Underscore.js like library.
-
-var buildUtils = function () {
-    var string = {}, array = {}, object = {},
-    _ = {}, pvt = {}, x = 'Hello ', y = 'World!!';
-    // string, array and object are holders for ES5 natives.
-    
-    // Generally, s denotes string, a array, o object and f function.
-    
-    ////////////////////////////////////////////////////////////////////////////
-    // Writing ES5 natives.
-    ////////////////////////////////////////////////////////////////////////////
-    string.slice = function (s, p1, p2) {
-        var ans = '', i = null;
-        if (p1 === null) { p1 = 0; }
-        else if (p1 < 0) { p1 = len(s) + p1; }
-        if (p2 === null) { p2 = len(s); }
-        else if (p2 > len(s)) { p2 = len(s); }
-        else if (p2 < 0) { p2 = len(s) + p2; }
-        for (i = p1; i < p2; i += 1) { ans += s[i]; }
+var _ = {};
+(function () {
+    var x = 'tmp', y = 'tmp';
+    _.concat = function (u1, u2) {
+        var ans = [], i = null; // assumed: u is an _
+        if (type(u1) === 'string') { return u1 + u2; }
+        for (i = 0; i < len(u1); i += 1) { append(ans, u1[i]); }
+        for (i = 0; i < len(u2); i += 1) { append(ans, u2[i]); }
         return ans;
     };
-    string.indexOf = function (s, sub, pos) { 
+    _.slice = function (u, p1, p2) {
+        var ans = [], i = null; // assumed: u is an _
+        if (type(u) === 'string') { ans = ''; }
+        if (p1 === null) { p1 = 0; }
+        else if (p1 < 0) { p1 = len(u) + p1; }
+        if (p2 === null) { p2 = len(u); }
+        else if (p2 < 0) { p2 = len(u) + p2; }
+        for (i = p1; i < p2; i += 1) {
+            if (type(u) === 'array') { append(ans, u[i]); }
+            else { ans += u[i]; }
+        }
+        return ans;
+    };
+    _.from = function (u, p1) { return _.slice(u, p1, null); };
+    _.upto = function (u, p2) { return _.slice(u, null, p2); };
+    _.indexOf = function (u, tgt, pos) {
         var i = null;
         if (pos === null) { pos = 0; }
-        for (i = pos; i <= len(s) - len(sub); i += 1) {
-            if (string.slice(s, i, i + len(sub)) === sub) { return i; }
+        else if (pos < 0) { pos = len(u) + pos; }
+        if (type(u) === 'array') {
+            for (i = pos; i < len(u); i += 1) {
+                if (u[i] === tgt) { return i; }
+            }
+        } else { // assumend: u is a string
+            for (i = pos; i <= len(u) - len(tgt); i += 1) {
+                if (_.slice(u, i, i + len(tgt)) === tgt) {
+                    return i;
+                }
+            }
         }
         return -1;
     };
-    string.lastIndexOf = function (s, sub, pos) {
-        var i = null, ans = -1;
-        if (pos === null) { pos = len(s) - 1; }
-        s = string.slice(s, 0, pos + 1);                                        // This is cheeky. But works!
-        for (i = 0; i <= len(s) - len(sub); i += 1) {
-            if (string.slice(s, i, i + len(sub)) === sub) { ans = i; }
+    _.index = function (u, tgt) { return _.indexOf(u, tgt, null); };
+    _.lastIndexOf = function (u, tgt, pos) {
+        var i = null;
+        if (pos === null) { pos = len(u) - 1; }
+        if (pos < 0) { pos = len(u) + pos; }
+        if (type(u) === 'array') {
+            for (i = pos; i >= 0; i -= 1) {
+                if (u[i] === tgt) { return i; }
+            }
+        } else {
+            for (i = pos; i >= len(tgt) -1; i -= 1) {
+                if(_.slice(u, i - len(tgt) + 1, i + 1) === tgt) {
+                    return i - len(tgt) + 1;
+                }
+            }
         }
-        return ans;
+        return -1;
     };
-    string.replace = function (s, old, rep) {
+    _.rindex = function (u, tgt) { return _.lastIndexOf(u, tgt, null); };
+    _.replace = function (s, old, rep) {
         var i = null;
         while (true) {
-            i = string.indexOf(s, old, null);
+            i = _.index(s, old);
             if (i === -1) { break; }
-            s = string.slice(s, 0, i) + rep + p.str.slice(s, i + len(old), null);
+            s = _.upto(s, i) + rep + _.from(s, i+1);
         }
         return s;
     };
-    array.slice = function (a, p1, p2) {
-        var ans = [], i = null;
-        if (p1 === null) { p1 = 0; }
-        else if (p1 < 0) { p1 = len(p1) + p1; }
-        if (p2 === null) { p2 = len(a); }   // p2 === null || p2 > len(s) won''t always work because || has very low precedence
-        else if (p2 > len(a)) { p2 = len(a); }
-        else if (p2 < 0) { p2 = len(a) + p2; }
-        for (i = p1; i < p2; i += 1) { append(ans, a[i]); }
-        return ans;
-    };
-    string.split = function (s, sep, limit) {
+    _.split = function (s, sep) {
         var ans = [], i = null;
         if (sep === '') {
             for (i = 0; i < len(s); i += 1) { append(ans, s[i]); }
-            return array.slice(ans, null, limit);
+            return ans;
         }
-        // otherwise...
-        while (true) {
-            i = string.indexOf(s, sep, null);
+        while(true) {
+            i = _.index(s, sep);
             if (i === -1) {
                 append(ans, s);
-                break;
+                return ans;
             }
-            append(ans, p.str.slice(s, 0, i));
-            s = string.slice(s, i + len(sep), null);
+            append(ans, _.upto(s, i));
+            s = _.from(s, i + 1);
         }
-        return array.slice(ans, null, limit);
-    };    
-    string.toLowerCase = function (s) {
-        var ans = '', i = null, ordA = ord('A'), ordZ = ord('Z'), ordI = null;
+    };
+    _.splitN = function (s, sep, n) { return _.upto(_.split(s, sep), n); };
+    _.toLowerCase = function (s) {
+        var ans = '', i = null,
+            ordA = ord('A'), ordZ = ord('Z'), ordI = null;
         for (i = 0; i < len(s); i += 1) {
-            ordX = ord(s[i]);
-            if (ordA <= ordI && ordI <= ordZ) { ans += chr(ordI + 32); }
-            else { ans += s[i]; }
+            ordI = ord(s[i]);
+            if (ordA <= ordI && ordI <= ordZ) {
+                ans += chr(ordI + 32);
+            } else { ans += s[i]; }
         }
         return ans;
     };
-    string.toUpperCase = function (s) {
-        var ans = '', i = null, o_a = ord('a'), o_z = ord('z'), o_i = null;
+    _.lower = _.toLowerCase;
+    _.toUpperCase = function (s) {
+        var ans = '', i = null,
+            ord_a = ord('a'), ord_z = ord('z'), ord_i = null;
         for (i = 0; i < len(s); i += 1) {
-            o_i = ord(s[i]);
-            if (o_a <= o_i && o_i <= o_z) { ans += chr(o_i - 32); }
-            else { ans += s[i]; }
+            ord_i = ord(s[i]);
+            if (ord_a <= ord_i && ord_i <= ord_z) {
+                ans += chr(ord_i - 32);
+            } else { ans += s[i]; }
         }
         return ans;
     };
-    array.concat = function (a1, a2) {
-        var ans = [], i = null;
-        for (i = 0; i < len(a1); i += 1) { append(ans, a1[i]); }
-        for (i = 0; i < len(a2); i += 1) { append(ans, a2[i]); }
-        return ans;
-    };
-    array.join = function (a, sep) {
+    _.upper = _.toUpperCase;
+    
+    // TODO: write _.trim (String.prototype.trim.call)
+    
+    _.join = function (a, sep) {
         var ans = '', i = null;
-        for (i = 0; i < len(a) - 1; i += 1) { ans += str(a[i]) + sep; }
+        for (i = 0; i < len(a) - 1; i += 1) {
+            ans += str(a[i]) + sep;
+        }
         return ans + str(a[i]);
     };
-    array.pop = function (a) {
+    _.pop = function (a) {
         var ans = a[len(a) - 1];
         del(a, len(a) - 1);
         return ans;
     };
-    array.push = append;
-    array.reverse = function (a) {
+    _.push = append;
+    _.reverse = function (a) {
         var i = null, tmp = null;
         for (i = 0; i < len(a) / 2; i += 1) {
             tmp = a[i];
             a[i] = a[len(a) - 1 - i];
             a[len(a) - 1 - i] = tmp;
         }
-        return null;
+        return a;
     };
-    array.shift = function (a) {
+    _.shift = function (a) {
         var ans = a[0];
         del(a, 0);
         return ans;
-    };        
-    array.sort = function(a, f) {
-        var less = [], equal = [], more = [], pivot = null, i = null, tmp = null;
-        if (len(a) <= 1) { return a; }
+    };
+    _.unshift = function (a, elt) {
+        append(_.reverse(a), elt);
+        return len(_.reverse(a));
+    };
+    _.sort = function (a, f) {
+        var i = null, j = null, tmp = null;
         if (f === null) {
             f = function (m, n) {
-                if (m < n) { return -1; }
-                else if (m === n) { return 0; }
-                return +1;
+                if (m <= n) { return -1; }  // don''t sort
+                return 1;                   // sort
             };
         }
-        pivot = a[0];
-        append(equal, pivot);
-        for (i = 1; i < len(a); i += 1) {
-            tmp = f(a[i], pivot);
-            if (tmp < 0) { append(less, a[i]); }
-            else if (tmp === 0) { append(equal, a[i]); }
-            else { append(more, a[i]); }
+        for (i = 0; i < len(a) - 1; i += 1) {
+            for (j = i + 1; j < len(a); j += 1) {
+                if (f(a[i], a[j]) > 0) {
+                    tmp = a[i];
+                    a[i] = a[j];
+                    a[j] = tmp;
+                }
+            }
         }
-        tmp = array.concat(array.sort(less, f), equal);
-        return array.concat(tmp, array.sort(more, f));
+        return a;
     };
-    array.splice = function (a, p1, count) {
+    _.splice = function (a, p1, count) {
         var ans = [], i = null, j = null;
         if (count === null) { count = 1; }
         for (i = 0; i < count; i += 1) {
@@ -154,64 +171,50 @@ var buildUtils = function () {
         }
         return ans;
     };
-    array.unshift = function (a, elt) {
-        var ans = null;
-        array.reverse(a);
-        ans = append(a, elt);
-        array.reverse(a);
-        return ans;
-    };
-    array.indexOf = function (a, elt, pos) {
+    _.every = function (a, f) {
         var i = null;
-        if (pos === null) { pos = 0; }
-        for (i = pos; i < len(a); i += 1) { if (elt === a[i]) { return i; } }
-        return -1;
-    };
-    array.lastIndexOf = function (a, elt, pos) {
-        var tmp = null, i = null;
-        if (pos === null) { pos = len(a) - 1; }
-        for (i = pos; i >= 0; i -= 1) { if (elt === a[i]) { return i; } }
-        return -1;
-    };
-    array.every = function (a, f) {
-        var i = null, l1 = len(a);
-        for (i = 0; i < l1; i += 1) { if (!f(a[i])) { return false; } }
+        for (i = 0; i < len(a); i += 1) { if (!f(a[i])) { return false; } }
         return true;
     };
-    array.some = function (a, f) {
+    _.some = function (a, f) {
         var i = null;
         for (i = 0; i < len(a); i += 1) { if (f(a[i])) { return true; } }
         return false;
     };
-    array.forEach = function (a, f) {
+    _.forEach = function (a, f) {
         var i = null;
         for (i = 0; i < len(a); i += 1) { f(a[i]); }
         return null;
     };
-    array.map = function (a, f) {
+    _.map = function (a, f) {
         var ans = [], i = null;
         for (i = 0; i < len(a); i += 1) { append(ans, f(a[i])); }
         return ans;
     };
-    array.filter = function (a, f) {
+    _.filter = function (a, f) {
         var ans = [], i = null;
         for (i = 0; i < len(a); i += 1) { if (f(a[i])) { append(ans, a[i]); } }
         return ans;
     };
-    array.reduce = function (a, f, prev) {
+    _.reduce = function (a, f, prev) {
         var i = 0;
         if (prev === null) { prev = a[0]; i = 1; }
         for (i = i; i < len(a); i += 1) { prev = f(prev, a[i]); }
         return prev;
     };
-    array.reduceRight = function (a, f, prev) {
+    // TODO: decide if `reduceFrom()` and `reduce()` should be separate functions.
+    _.reduceRight = function (a, f, prev) {
         var leftmost = 0, i = null;
         if (prev === null) { prev = a[len(a) - 1]; leftmost = 1; }
         for (i = len(a) - 1; i >= leftmost; i -= 1) { prev = f(prev, a[i]); }
         return prev;
     };
-    object.keys = keys;
-    object.hasOwnProperty = function (o, s) { return array.indexOf(keys(o), s, null) !== -1; };
-    
-    print(len(array) + len(string) + len(object));
-return _;}();
+    _.contains = function (x, elt) {
+        if (type(x) === 'object') {
+            return _.index(keys(x), elt) !== -1;
+        }
+        return _.index(x, elt) !== -1;
+    };
+    _.has = _.contains;
+    return null;
+}());
