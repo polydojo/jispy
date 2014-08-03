@@ -173,28 +173,36 @@ var _ = {};
     };
     _.every = function (a, f) {
         var i = null;
-        for (i = 0; i < len(a); i += 1) { if (!f(a[i])) { return false; } }
+        for (i = 0; i < len(a); i += 1) {
+            if (!f(a[i])) { return false; }
+        }
         return true;
     };
+    _.all = _.every;
     _.some = function (a, f) {
         var i = null;
-        for (i = 0; i < len(a); i += 1) { if (f(a[i])) { return true; } }
+        for (i = 0; i < len(a); i += 1) {
+            if (f(a[i])) { return true; }
+        }
         return false;
     };
+    _.any = _.some;
     _.forEach = function (a, f) {
         var i = null;
         for (i = 0; i < len(a); i += 1) { f(a[i]); }
         return null;
     };
-    _.map = function (a, f) {
-        var ans = [], i = null;
-        for (i = 0; i < len(a); i += 1) { append(ans, f(a[i])); }
-        return ans;
-    };
+    _.each = _.forEach;
+
     _.filter = function (a, f) {
         var ans = [], i = null;
-        for (i = 0; i < len(a); i += 1) { if (f(a[i])) { append(ans, a[i]); } }
+        for (i = 0; i < len(a); i += 1) {
+            if (f(a[i])) { append(ans, a[i]); }
+        }
         return ans;
+    };
+    _.reject = function (a, f) {
+        return _.filter(a, function (x) { return !f(x); });
     };
     _.reduce = function (a, f, prev) {
         var i = 0;
@@ -202,12 +210,23 @@ var _ = {};
         for (i = i; i < len(a); i += 1) { prev = f(prev, a[i]); }
         return prev;
     };
-    // TODO: decide if `reduceFrom()` and `reduce()` should be separate functions.
+    _.foldl = function (a, f) { return _.reduce(a, f, null); };
     _.reduceRight = function (a, f, prev) {
-        var leftmost = 0, i = null;
-        if (prev === null) { prev = a[len(a) - 1]; leftmost = 1; }
-        for (i = len(a) - 1; i >= leftmost; i -= 1) { prev = f(prev, a[i]); }
+        var i = len(a) - 1;
+        if (prev === null) {
+            prev = a[len(a) - 1]; // last elt
+            i = i - 1;            // second-last elt
+        }
+        for (i = i; i >= 0; i -= 1) { prev = f(prev, a[i]); }
         return prev;
+    };
+    _.foldr = function (a, f) { return _.reduceRight(a, f, null); };
+    _.find = function (a, f) {
+        var i = null;
+        for (i = 0; i < len(a); i += 1) {
+            if (f(a[i])) { return a[i]; }
+        }
+        return null;
     };
     _.contains = function (x, elt) {
         if (type(x) === 'object') {
@@ -215,6 +234,26 @@ var _ = {};
         }
         return _.index(x, elt) !== -1;
     };
-    _.has = _.contains;
-    return null;
-}());
+    _.matches = function (subO) { // subO <--> sub-object
+        return function (o) {
+            var i = null, j = null,
+                k = null, kez = keys(subO);
+            if (o === subO) { return true; }
+            for (i = 0; i < len(subO); i += 1) {
+                k = kez[i];
+                if (!_.contains(o, k)) { return false; }
+                if (o[k] !== subO[k]) { return false; }
+            }
+            return true;
+        };
+    };
+    _.where = function (aO, subO) { // aO <--> array of objects
+        var matches = _.matches(subO);
+        return _.filter(aO, matches);
+    };
+    _.findWhere = function (aO, subO) {
+        var matches = _.matches(subO);
+        return _.find(aO, matches);
+    };
+    
+return null;}());
