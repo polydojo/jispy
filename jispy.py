@@ -211,7 +211,7 @@ def lex(s):
 #                    SYNTACTIC ANALYSIS                     #
 #############################################################
 
-eMsgr = lambda li: ' ... ' + ' '.join(map(lj_repr, li));
+eMsgr = lambda li: ' ... ' + ' '.join(map(lj_repr, li[:20]));
 
 def gmb(seq, i): # Get Matching (Closing) Bracket
     "Get index of right bracket, matching left bracket at i."
@@ -227,7 +227,7 @@ def gmb(seq, i): # Get Matching (Closing) Bracket
         if seq[j] == left: count += 1;
         elif seq[j] == right: count -= 1;
         if count == 0: return j;
-    raise LJSyntaxErr('unbalanced bracket ' + left);
+    raise LJSyntaxErr('unbalanced bracket' + eMsgr(seq[i:]));
 
 def topSplit(li, symbo):                                        # Consider: `add(1, sub(2, 3));`
     "Splits input list on the TOP-LEVEL non-bracket symbol."    # The comma right after 2 is not a top-level comma. (Its nested.)
@@ -468,16 +468,16 @@ def yacc(tokens):
         try:
             lp = tokens.index(sym('('), j);
             assert lp == j + 1;                               # Notes:
-            rp = gmb(tokens, lp);                             #    1.    We shall convert the for loop to an equivalent while loop
-            assert rp > lp + 1; # ( ..non-empty.. )           #     2.    The equivalent while loop of the loop shown above is:
-            lc = tokens.index(sym('{'), rp);                  #            ... i = 0 ; while (i < 10) { ... i += 1 } ...
-            assert lc == rp + 1;                              #        where `...` is assumend to remain the same.
-            rc = gmb(tokens, lc);                             #    3.    It is necessary to verify that the increment-clause
-            assert rc > lc + 1;    # non-empty block          #            of for `i += 1` is NOT a disruptive statement.
-            s1 = tokens.index(sym(';'), lp, rp);              #        It must be an assignment. (Pure JS is less restrictive.)
-            s2 = tokens.index(sym(';'), s1 + 1, rp);
-            assert s2 > s1 + 1;
-            assert sym(';') not in tokens[s2 + 1 : rp];
+            rp = gmb(tokens, lp);                             #    1. We shall convert the for loop to an equivalent while loop
+            assert rp > lp + 1; # ( ..non-empty.. )           #    2. The equivalent while loop of the loop shown above is:
+            lc = tokens.index(sym('{'), rp);                  #         ... i = 0 ; while (i < 10) { ... i += 1 } ...
+            assert lc == rp + 1;                              #         where `...` is assumend to remain the same.
+            rc = gmb(tokens, lc);                             #    3. It is necessary to verify that the increment-clause
+            assert rc > lc + 1;    # non-empty block          #         of for `i += 1` is NOT a disruptive statement.
+            s1 = tokens.index(sym(';'), lp, rp);              #         It must be an assignment. (Pure JS is less restrictive.)
+            s2 = tokens.index(sym(';'), s1 + 1, rp);          #    4. Assignment & increment clauses within (parens of) for
+            assert s2 > s1 + 1;                               #         may not include function values; as tokens.index()
+            assert sym(';') not in tokens[s2 + 1 : rp];       #         is used as opposed to topIndex(). 
         except (ValueError, AssertionError):
             raise LJSyntaxErr('illegal for statement');
         asgnCl = tokens[lp + 1 : s1];    # ASSiGNment CLause, yet to be parsed
@@ -542,6 +542,7 @@ def yacc(tokens):
             semiPos = topIndex(tokens, j, sym(';'));
             stmt = tokens[j : semiPos];
             if not stmt:
+                #pass;
                 raise LJSyntaxErr('empty statement');
             #if sym('=') in stmt:
             #    parseAssign(stmt);
@@ -1166,33 +1167,18 @@ def run(tree, env, maxLoopTime=None, writer=None):
             runExpStmt(stmt, env);
 
 #############################################################
-def builtins(writer):
+def inbuilts(writer):
     "Adds built-in functions like type(), len(), keys() etc."
     # n_ in the following functions/variables indicates NATIVE
-    '''
-    def n_str(x):
-        "Returns string form of input"
-        if x is None: return 'null';
-        if type(x) is bool:
-            return 'true' if x else 'false';
-        elif type(x) is float:
-            if x == round(x): return str(int(x));
-            else: return str(x);
-        elif type(x) is str: return x;
-        elif type(x) in [list, dict]:
-            return json.dumps(x);
-        elif type(x) is Function or inspect.isfunction(x):
-            raise LJTypeErr("functions don't have string equivalents");
-        raise Exception(); # internal error
-    '''
     def n_str(x):
         "Returns the string form of input."
         if type(x) is str: return x;
         return lj_repr(x); 
+    
     def n_print(x):
-        "Default output function that appends new line."
+        "Default output function."
         if writer: writer(n_str(x) + '\n');
-        else: raise LJReferenceErr('writeln is not defined');
+        else: raise LJReferenceErr('print is not defined');
         return None; # null
     
     def n_type(x):
@@ -1241,7 +1227,7 @@ def builtins(writer):
     
     def n_ord(c):
         if type(c) is str and len(c) == 1: return float(ord(c));
-        raise LJTypeErr('non-character supplied to org()');
+        raise LJTypeErr('non-character supplied to ord()');
     
     def n_chr(i):
         if not (type(i) is float and i == round(i)):
@@ -1318,7 +1304,7 @@ class Runtime(object):
         "Initializes a Runtime, which has a single global Env."
         self.gEnv = makeEnvClass(maxDepth)();
         self.writer = writer;
-        addNatives(self.gEnv, builtins(self.writer));
+        addNatives(self.gEnv, inbuilts(self.writer));
         self.maxDepth = maxDepth;
         self.maxLoopTime = maxLoopTime;
     
