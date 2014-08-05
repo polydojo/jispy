@@ -223,7 +223,7 @@ var string = {}, array = {}, object = {};
         return initial;
     };
     array.reduceRight = function (a, f) {
-        return array.fold(array.upto(a, -1), f, a[len(a) - 1]);
+        return array.foldr(array.upto(a, -1), f, a[len(a) - 1]);
     };
     object.keys = keys;
     object.hasOwnProperty = function (o, s) { return array.index(keys(o), s, null) !== -1; };

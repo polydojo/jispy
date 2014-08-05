@@ -5,7 +5,6 @@
 
 import re;
 import time;
-import json;         # used repr of arrs and objs
 import inspect;
 import sys;
 import math;
@@ -113,9 +112,43 @@ def lex(s):
         ('>  >', '>>'), ('<  <', '<<'),
         ('*  =', '*='), ('/  =', '/='), ('%  =', '%=')#, 
     ];
-    pat = r'''"(?:[^"\\]|(?:\\.))*"|'(?:[^'\\]|(?:\\.))*'|[^"']*''';
-    matches = re.findall(pat, s + '\n');
-    tokens = [];
+    tokens = []; # Output. Filled by enclosed functions.
+    
+    ###    
+    def segmentifyLine(s):
+        "Helps segmentify() with segmenting a single line." # segmentifyLine() uses an FSM which looks as follows:
+        mode = 'code'; quote = None;                        #
+        ans = [''];                                         #           .--> (CODE) <--> STRING
+        for i in xrange(len(s)):                            #
+            if mode == 'code' and quote is None:            # CODE is the start state and the only accepting state.
+                if s[i] in ['"', "'"]:
+                    mode = 'string';
+                    quote = '"' if s[i] == '"' else "'";
+                    ans.append(quote);
+                elif s[i] == '/' and i + 1 < len(s) and s[i+1] == '/':
+                    return ans;
+                else:
+                    ans[-1] += s[i];
+            elif mode == 'string' and quote in ['"', "'"]:  # A segment is a un-quoted code snippet
+                prev = ans[-1][-1];                         #   or a quoted-string snippet.
+                ans[-1] += s[i];
+                if s[i] == quote and prev != '\\':
+                    mode = 'code';
+                    ans.append('');
+                    quote = None;
+            else:
+                assert False;
+        if mode != 'code':
+            raise LJSyntaxErr('EOL while scanning string literal');
+        return ans;
+    
+    def segmentify(s):
+        "Segments input into code-segements & string-segments."
+        segments = [];
+        for line in s.splitlines():
+            if line and not line.isspace():
+                segments += segmentifyLine(line);
+        return segments;
     
     def isPropertyName(s):
         "Helps subscriptify() tell if `s` is a valid key."  # TODO: Currently, `a = {}; a.function = 1;` is legal; 
@@ -130,7 +163,7 @@ def lex(s):
             raise LJSyntaxErr('illegal refinement ' + s);
     
     def handleDot(x):
-        "Works with dot-refinement(s)"
+        "Converts dot-refinements to subscript-refinements."    # The parser cannot handle dot-refinements (yet);
         if x[-1] == '.':
             raise LJSyntaxErr('unexpected trailing . (dot) ' + x);      # TODO: Support trailing dots.
         elif x[0] == '.':
@@ -185,33 +218,19 @@ def lex(s):
         assert s[0] == s[-1] and s[-1] in ['"', "'"];
         tokens.append(s[1 : -1].decode('string_escape'));
     
-    j = 0;
-    while j < len(matches):
-        m = matches[j];
-        if m.startswith('"') or m.startswith("'"):
-            lexS(m);
-        else:
-            while '//' in m:
-                start = m.index('//');
-                while '\n' not in m[start : ]:
-                    j += 1;
-                    m += matches[j]; # append next match;
-                end = m.index('\n', start);
-                comment = m[start : end];
-                if comment.count('"') % 2 == 1 or comment.count("'") % 2 == 1:    # TODO: fix this.
-                    #print '\ncomment = ', comment, '\n';
-                    raise LJSyntaxErr('unbalanced quotes may not appear within comments');
-                m = m[ : start] + m[end : ];
-                #if 'var obj' not in m: assert 1 == 0;
-            lexNS(m);
-        j += 1;
+    for seg in segmentify(s):
+        if seg.startswith('"') or seg.startswith("'"): lexS(seg);
+        else: lexNS(seg);
     return [sym('var?')] + tokens;                             # UNINTERNED symbol, indicating that a var statement may follow.
 
 #############################################################
 #                    SYNTACTIC ANALYSIS                     #
 #############################################################
 
-eMsgr = lambda li: ' ... ' + ' '.join(map(lj_repr, li[:20]));
+def eMsgr(li):
+    "Helps print error messages."
+    err_repr = lambda x: '' if x == 'var?' else lj_repr(x);
+    return ' ... ' + ' '.join(map(err_repr, li[:20]));
 
 def gmb(seq, i): # Get Matching (Closing) Bracket
     "Get index of right bracket, matching left bracket at i."
@@ -360,10 +379,10 @@ def yacc(tokens):
     def parseElseIf(tokens, j):                               # form:        ... else if ( a !== 0 ) { ... } ...
         "Helps parseElse() in parsing else-if statements."    # index:        j
         tempTree = []; # dummy-tree for passing to parseIf()
-        j = parseIf(tokens[:], j+1, tempTree, 'else if');     # The if-ladder, which was created on seeing `if`,
-        [_, cond, code] = tempTree[0];                        # is mutated as follows on seeing `else if`:
-        tree[-1].append(cond);                                #      [if-ladder cond0 cond0] --> [if-ladder cond0 code0 cond1 code1]
-        tree[-1].append(code);                                # Where cond0, code0 were previously seen; cond1, code1 were just seen.
+        j = parseIf(tokens[:], j+1, tempTree, 'else if');   # The if-ladder, which was created on seeing `if`,
+        [_, cond, code] = tempTree[0];                      # is mutated as follows on seeing `else if`:
+        tree[-1].append(cond);                              #      [if-ladder cond0 cond0] --> [if-ladder cond0 code0 cond1 code1]
+        tree[-1].append(code);                              # Where cond0, code0 were previously seen; cond1, code1 were just seen.
         return j;
     
     def parsePureElse(tokens, j):                             # form:        ... else { ... } ...
@@ -374,13 +393,13 @@ def yacc(tokens):
             rc = gmb(tokens, lc);
         except (ValueError, AssertionError):
             raise LJSyntaxErr('illegal else statement');
-        cond = [sym('true')];    # alwyas truthy.            # The if-ladder, (which was previously created,)
-        code = yacc(tokens[lc+1 : rc]);                        # is mutated by adding a condition which is always true:
-        tree[-1].append(cond);                                #     [if-ladder cond0 code0 ] --> [if-ladder cond0 code0 TrueCond code1]
-        tree[-1].append(code);                                # TrueCond is always true, which makes pure `else`,
-        return rc + 1;                                        #     the semantic equivalent of `else if (true)`.
+        cond = [sym('true')];    # alwyas truthy.         # The if-ladder, (which was previously created,)
+        code = yacc(tokens[lc+1 : rc]);                   # is mutated by adding a condition which is always true:
+        tree[-1].append(cond);                            #     [if-ladder cond0 code0 ] --> [if-ladder cond0 code0 TrueCond code1]
+        tree[-1].append(code);                            # TrueCond is always true, which makes pure `else`,
+        return rc + 1;                                    #     the semantic equivalent of `else if (true)`.
     
-    def parseElse(tokens, j):                                # Relies on parseElseIf() and parsePureElse() above.
+    def parseElse(tokens, j):                             # Relies on parseElseIf() and parsePureElse() above.
         "Helps yacc() in parsing else statements."        
         if tree == [] or tree[-1][0] != 'if-ladder':
             raise LJSyntaxErr('misplaced else statement');
@@ -396,8 +415,8 @@ def yacc(tokens):
         tokens[j] = sym('if');    # make while look like if.
         tempTree = [];             # dummy-tree
         j = parseIf(tokens[:], j, tempTree, 'while');        # Note:
-        [_, cond, code] = tempTree[0];                        #     param `tokens` supplied to parseWhile is a 
-        tree.append(['while', cond, code]);                    #     NON-ALIAS-copy of that supplied to yacc;
+        [_, cond, code] = tempTree[0];                       #     param `tokens` supplied to parseWhile is a 
+        tree.append(['while', cond, code]);                  #     NON-ALIAS-copy of that supplied to yacc;
         return j;                                            #     We may hence freely make changes in it.        
         
     def parseReturn(tokens, j):                              # form:        ... return 1 + 1 + 1 ; ...
@@ -674,7 +693,6 @@ def lj_repr(x):
         out = out[ : -2]; # shave off trailing ", "
         return out + '}';
     if type(x) is Function:
-        print x.iTokens[1:];
         return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(lj_repr, x.iTokens[1:])) + ' }';
     if inspect.isfunction(x):
         return 'function () { [native code] }'
@@ -701,10 +719,10 @@ def run(tree, env, maxLoopTime=None, writer=None):
             count = 0; # counts { and }
             for j in xrange(len(expLi)):
                 tok = expLi[j];
-                if tok is sym('{'): count += 1;                # Keys in objects `{a: "apple"}` are NOT substituted
+                if tok is sym('{'): count += 1;               # Keys in objects `{a: "apple"}` are NOT substituted
                 elif tok is sym('}'): count -= 1;
                 elif type(tok) is Name and count == 0:
-                    expLi[j] = env.lookup(tok);                # env was passed to eval
+                    expLi[j] = env.lookup(tok);               # env was passed to eval
             return expLi;
         
         def subObject(expLi, j):                              # form:        ... { ... keyX : valueExpX , keyY : valueExpY ... }
@@ -1314,20 +1332,20 @@ class Runtime(object):
     
     def run(self, prog, env=None, console=False): # console <--> isInConsoleMode?
         "Runs a program in any  environment `env`."
-        if env is None: env = self.gEnv;                    # We cannot use `run(.. env=self.gEnv ..)` as `self` is not defined
-        tree = None; # parse tree                           # at the time of evaluating arguments. This is a work-around.
-        if type(prog) is list:
-            tree = prog;
-        elif type(prog) is str and prog.endswith('.l.js'):
-            with open(prog) as f:
-                tree = yacc(lex(f.read()));
-        elif type(prog) is str:
-            tree = yacc(lex(prog));
-        else:
-            raise TypeError('bad input to Runtime.run()');
-        #print tree;
-        writer = self.writer if console else None;
-        try: run(tree, env, self.maxLoopTime, writer);
+        try:
+            if env is None: env = self.gEnv;                    # We cannot use `run(.. env=self.gEnv ..)` as `self` is not defined
+            tree = None; # parse tree                           # at the time of evaluating arguments. This is a work-around.
+            if type(prog) is list:
+                tree = prog;
+            elif type(prog) is str and prog.endswith('.l.js'):
+                with open(prog) as f:
+                    tree = yacc(lex(f.read()));
+            elif type(prog) is str:
+                tree = yacc(lex(prog));
+            else:
+                raise TypeError('bad input to Runtime.run()');
+            writer = self.writer if console else None;
+            run(tree, env, self.maxLoopTime, writer);
         except LJErr as e:
             print('%s: %s' % (type(e).__name__[2:] + 'or' , e))
         except LJJump as e:
@@ -1350,7 +1368,7 @@ class Runtime(object):
         tmpRT = Runtime(self.maxDepth, self.maxLoopTime, self.writer);
         tmpRT.runG(prog, console);
 
-def console(prompt='jispy> ', rt=None, semify=False):       # semify __tries__ to auto-appends semicolons (as required)
+def console(rt=None, semify=False, prompt='jispy> '):       # semify __tries__ to auto-appends semicolons (as required)
     "This is REPL-like, but not really a REPL."
     original_prompt = prompt;
     if not rt: rt = Runtime();                              # Don't put rt=Runtime() as a default argument.
@@ -1375,6 +1393,4 @@ def console(prompt='jispy> ', rt=None, semify=False):       # semify __tries__ t
 if __name__ == '__main__':
     console();
         
-
-#############################################################
-
+############################################################
