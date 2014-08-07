@@ -1,134 +1,177 @@
 # Jispy
-Jispy is recursive descent (parser) interpreter for a strict subset of Javascript.  
-It is written purely in Python, distributed as a single file and highly extendable.
 
-See [LICENSE.md](https://github.com/sumukhbarve/jispy/blob/master/LICENSE.md) and [DEDICATION.md](https://github.com/sumukhbarve/jispy/blob/master/DEDICATION.md) for project license and dedication.
+#### A JavaScript Interpreter In Python
 
-**Note:** This document and each document linked herein is work in progress.
+Jispy is an interpreter for a strict subset of JavaScript, fondly called [LittleJ (LJ)](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md). It employs recursive descent for parsing and is very easily extendable.
 
-The subset of JavaScript that Jispy interprets is fondly called [LittleJ](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).  
-Please at least skim it before reading further.
+#### Built for embedding JavaScript
 
-**Installation:** Simply include jispy.py in your project directory.
+Jispy's original vision was to seamlessly allow embedding JavaScript programs in Python projects. By default, it doesn't expose the host's file system or any other sensitive element. Some checks on infinite looping and infinite recursion are provided to tackle possibly malicious code.
 
-Jispy comes armed with a console and an API. While the API provides far greater control, the console is great for getting started.
+See [LICENSE.md](https://github.com/sumukhbarve/jispy/blob/master/LICENSE.md) and [DEDICATION.md](https://github.com/sumukhbarve/jispy/blob/master/DEDICATION.md) for project license and dedication respectively.
+
+#### Installation
+Simply include **jispy.py** in your project directory. For convenience, you may wish to also include stdlib.l.js, which provides multiple utilities and manipulators.
+
+**Jispy comes armed with a console and an API.** While the API provides far greater control, the console is great for getting started.
 
 
 ### The `console()`
 
-Let's jump right in.
+You could start the console in two ways:
 
+1) Run `jispy.py` in a terminal:
+```bash
+ $ python jispy.py
+```
+2) From Python's interactive interpreter:
 ```py
- # Kick starting the console...
- >>> from jispy import console
- >>> console()  # continued int the following block...
+ >>> import jispy
+ >>> jispy.console()
 ```
+In either case, you'll unleash a LittleJ REPL (Read-Evaluate-Print Loop).
+
 ```js
- #// The JS console in Python. (Separated for better syntax highlighting.)
- jispy> "Hello World!";
- Hello World!
- jispy> var obj = {i: 'am', a: 'object!'}, arr = ['I', 'am', 'an', 'array'];
- jispy> obj.i === arr[1];
- true
- jispy> type(obj) === type(arr);
- false
- jispy> 'Because type() of an array is ' + type(arr);
- Because type() of an array is array
- jispy> var f = function (n) { if (n === 1) { return 1; } return n * f(n-1); };
- jispy> f(6); // Should be 720...
- 720
- jispy> var foo = function () { return foo; }; // functions are first class!
- jispy> foo === foo();
- true
- jispy> "Hit Crtl-D to exit."
- SyntaxError: expected ;
- jispy> "Dough.... :P"; // LittleJ is particular about semicolons;
- Dough.... :P
- jispy> "Bye!!";
- Bye!! 
+LJ> "Hello World!";
+"Hello World!"
+LJ> var obj = {i: 'am', an: 'object'}, arr = ['i', 'am', 'an', 'array'];
+LJ> obj.i === arr[1];
+true
+LJ> type(obj) === type(arr);
+false
+LJ> "Because type() of an array is " + type(arr);
+"Because type() of an array is array"
+LJ> // A function to compute factorial:
+LittleJ> var f = function (n) { if (n <= 1) { return 1; } return n * f(n-1); };
+LJ> f(6);
+720
+LJ> // Functions are first class!!
+LJ> var foo = function () { return foo; };
+LittleJ> foo === foo() && foo === foo()();
+true
+LJ> // Hit Crtl-D to exit
+LJ> 
 ```
-
-Four functions come builtin with (the standard configuration of) Jispy:
-
-+ `write()`, `writeln()`, `type()`, `keys()`, `str()`, `len()`.  
-Each accepts a single argument. The last two are like their python-versions.  
-`keys()` is equivalent to `Object.keys()` in JS or `dict.keys()` in Python.
-
-Also, the `math` object is made globally available. It is very similar to JavaScript's `Math` object.
-
-To enter multiple lines of code, end each line with a tab.  
+To enter multiple lines of code, end lines with tabs.  
 Here's an example with `for`:
 ```js
- jispy> var obj = {a: 'apple', b: 'ball', c: 'cat'};
- jispy> var i = 0, j = 0, keyz = keys(obj);
- jispy> for (i = 0; i < len(obj); i += 1) {     
- ......          j = keyz[i];    
- ......          j + ' --> ' + obj[j];   
- ...... }
- a --> apple
- c --> cat
- b --> ball
- jispy> "Ain't Jispy Awesome?!";
- Ain't Jispy Awesome?!
+LJ> var obj = {a: 'apple', b: 'ball', c: 'cat', d: 'dog'}, // tab..       
+...     i = null, keyz = keys(obj);
+LJ> for (i = 0; i < len(obj); i += 1) {                    // tab.. 
+...     keyz[i] + ' for ' + obj[keyz[i]];                  // tab..       
+... }
+"a for apple"
+"c for cat"
+"b for ball"
+"d for dog"
+LJ> 
 ```
 
-And oh yes! Objects have `len()` in LittleJ.  
-`len(obj)` equivalent to `Object.keys(obj).length` in JavaScript. Thus, in the above code, we may replace `i < len(obj)` by `i < len(keyz)`.
+The above example uses the inbuilt `len()` and `keys()` functions. These, along with other inbuilts have been described in [LittleJ's specification](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).
 
 ### The API
 
-Consider the following LittleJ program for computing factorial:
-```javascript
-var n = 6, factorial = function (n) {
-    if (n <= 1) { return 1; }
-    return n * factorial(n - 1);
-};
-writeln(factorial(n)); // prints 720
+Consider the following LittleJ program for computing for checking if a number is prime:
+```js
+var isPrime = function (n) {
+        var countF = 0, i = null; // countF counts the number of factors
+        for (i = 1; i <= n; i += 1) { if (n % i === 0) { countF += 1; } }
+        return countF === 2;
+    };
+print(isPrime(7)); // true
+print(isPrime(8)); // false
 ```
 
-Assuming that the above LittleJ program for computing factorial has been saved as a python-string in the variable `factoProg`, the following python code would execute it.
-```python
- # ... define factoProgo ...
+If the above program has been stored as a Python-string in the variable `lj_isPrime`, the following python code would execute it.
+```py
+ # ... set lj_isPrime ...
 from jispy import Runtime
 rt = Runtime()
-rt.run(factoProgo); # Runtime().run(factoProgo) would have the same effect.
- # 720 will be printed
+rt.runX(lj_isPrime);
 ```
 
-A `Runtime` is a wrapper around a global environment. It allows you to run multiple programs in the same environment. If you don't wish to do so, create a new instance of `Runtime` each time, or simply call `__init__` on the existing one.
+#### `Runtime`s
+
+A `Runtime` provides a wrapper around a single global environment or scope. It allows you to run multiple programs in the same environment; at the same time allowing you to run a programs in foreign environments.
 
 `Runtime`'s constructor optionally accepts three arguments (in order):
 
 + `maxLoopTime`: The maximum time in seconds for which a loop may run.
 + `maxDepth`: The maximum allowable depth of nested environments (scopes).
-+ `writer`: `write` method of a `file`. It defaults to `sys.stdout.write`.
++ `writer`: `write` method of a file (opened for writing). It defaults to `sys.stdout.write`.
 
-`maxLoopTime` and `maxDepth` both default to `None`. Unless set to a positive value, there shall be no checks on infinite-looping and/or infinite-recursion.
+`maxLoopTime` and `maxDepth` both default to `None`. Unless set to a positive value, there shall be no checks on infinite looping and/or infinite recursion. If `writer` is set to `None`, the inbuilt `print()` shall not be made available.
 
-if `writer` is set to `None`, inbuilts `write` and `writeln` shall not be made available.
+Here's an example involving `maxLoopTime` and `maxDepth`:
+```py
+ >>> from jispy import Runtime
+ >>> prog1 = """var i = 1; while (true) { i += 0; }"""
+ >>> prog2 = """var foo = function () { return foo(); }; foo();"""
+ >>> rt = Runtime(maxLoopTime=13, maxDepth=100);
+ >>> rt.runX(prog1);
+ RuntimeError: looping for to long
+ >>> rt.runX(prog2);
+ RuntimeError: maximum call depth exceeded
+ >>> 
+```
+
+#### Running programs in the right `Runtime`:
+
+An instance of `Runtime` (say `rt`) provides 3 ways in which you may run a program. There's a method corresponding to each:
+
+- `rt.runG()` runs programs in `rt`'s global environment.
+- `rt.runC()` runs programs in a first-level child of `rt`'s global environment.
+- `rt.runX()` runs programs in a completely different (foreign) environment.
+
+***In LittleJ, once a variable is defined, it may not be redefined in the same environment.*** Thus, the method used to run a program is significant.
+
+Additionally, there's an `rt.run()` method, which accepts the environment in which a program should be run. Each of the above listed method internally calls `rt.run()`. However, calling `rt.run()` explicitly is not advised.
+
+####  Input to `rt.runG()`, `rt.runC()` & `rt.runX()`:
+
+Each of these methods accept at least 1 and at most 2 inputs (in order):
+
+- `prog`: A LittleJ program. It must be supplied.
+- `console`: A boolean. (Optional, defaults to `False`.)
+
+`prog` may be any one of:
+
+- A Python string in which a LittleJ program is stored. (Like `lj_isPrime` above.)
+- The **name** of an LittleJ program file. LittleJ program files have the `.l.js` extension. Any string ending in `.l.js` is treated as a file name.
+- A parse tree generated by Jispy's (`lex()` and) `yacc()`. This option is explored in later sections.
 
 #### More about `console()`
 
-Each call to Jispy's `console()` uses a **single** `Runtime`, wherein each input line (or lines) is executed as an independent program. But since the `Runtime` is common, later programs have access to variables defined in earlier programs.
+Each call to Jispy's `console()` uses a **single** `Runtime`. Each input line (or lines) is executed as an independent program in the global environment (using the `runG()` method). Thus, each line has access to variables defined in earlier an earlier line.
 
-Originally, the `console()` was not a **REPL**. It now is. There is not need to use `writeln` with the console.
+##### Input to `console()`
+
+The console accepts three optional arguments:
+
+- `rt`: The `Runtime` in which each line (or lines) should be run. Defaults to `None`, in which case a fresh `Runtime` is created.
+- `semify`: A boolean, defaults to `False`. If `True` (or truthy), the console *tries* to add semicolons to the end of lines as required.
+- `prompt`: The input prompt. Defaults to `"LittleJ> "`
+
+Originally, the `console()` was not a REPL. It now is. (But the name has stuck.)
 
 ### Adding Natives
 
-Functions such as `writeln` may be added via `Runtime`'s `addNatives` method.
+Functions such as `print()` may be added via `Runtime`'s `addNatives` method.
 It accepts a single dictionary as input. The key-value pairs are added to the global environment.
 
 For example, let's add a native version of the `factorial` function and set native `inbuilt_num` to `7.0` :
 ```python
-from jispy import Runtime
-factorial = lambda n: 1.0 if n <= 1.0 else n * factorial(n-1)
-rt = Runtime(maxLoopTime = 13, maxDepth = 100)
-rt.addNatives({'factorial' : factorial, 'inbuilt_num' : 7.0})
-demoProgo = 'writeln(factorial(inbuilt_num));'
-rt.run(demoProgo) # prints 5040
+ >>> from jispy import Runtime
+ >>> factorial = lambda n: 1.0 if n <= 1.0 else n * factorial(n-1)
+ >>> rt = Runtime(maxLoopTime = 13, maxDepth = 100)
+ >>> rt.addNatives({'factorial' : factorial, 'inbuilt_num' : 7.0})
+ >>> demoProgo = 'print(factorial(inbuilt_num));'
+ >>> rt.runC(demoProgo)
+ 5040
+ >>> 
 ```
 
-Please note that the LittleJ program may redefine all natives. And a native variable may be initialized (as a fresh variable) in any non-global environment.
+Please note that the LittleJ program may redefine all natives. And a native variable may be initialized (as a fresh variable) in a new environment.
 
 More will soon be added. As already noted, THIS IS WORK IN PROGRESS.
 There are more caveats, but error messages should be helpful enough.

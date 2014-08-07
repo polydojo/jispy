@@ -209,11 +209,8 @@ In JS, names of constructors conventionally begin with a capital letters. Being 
 
 There are two more limitations, namely:
 
-- Unless the identifier is `_`, it may not contain dangling underscores.
-- Unless the identifier is `$`, it may not contain any dollar signs. 
-
-Both `_` and `$` are meant to be used as namespaces for standard libraries (currently under development.) Programmers are highly discouraged from using them (for any other purpose.)
-
+- Identifier names may not include the `$` key.
+- Identifier names may not include dangline (i.e. leading or trailing) underscores.
 #### 6.1.3 No `Foo.prototype`
 
 `this` comes with its share of goodies, namely the prototype chain. Prototypal inheritance is perhaps the best model for code reuse. However, JavaScript's implementation of prototypal inheritance is confusing (and perhaps irritating.)
@@ -224,17 +221,17 @@ As there are no constructors in LittleJ, JavaScript-like prototype chains are no
 
 The `in` keyword in JavaScript (notoriously) looks for properties up the prototype-chain. Including it in LittleJ would lead to semantic inequality (with JavaScript). It has hence been excluded.
 
-#### 6.1.5 Things are just what they seem
+#### 6.1.5 No Magic
 
-As there's no prototype chain, objects do not have any mysterious properties. An object has exactly what you put in it. The same goes with arrays and all other datatypes.
+As there's no prototype chain, objects do not have any magically acquired properties. An object has exactly those properties which were explicitly put in it. The same goes with arrays and all other datatypes.
 
-Unfortunately, this means that arrays and strings don't even have useful properties like `length`. This is fixed via inbuilt functions discussed in the next section. 
+Unfortunately, this means that arrays and strings don't even have useful properties like `length`. Here's where inbuilt functions come into play.
 
-### 6. Inbuilt Functions & Objects
+### 7. Inbuilt Functions & Objects
 
 There are **9** inbuilt functions, complimented by the inbuilt `math` object. Each inbuilt has an equivalent in JavaScript, which can be defined in a few lines of code.
 
-#### 6.1 `type()`
+#### 7.1 `type()`
 
 JavaScript's `typeof` operator is not particularly helpful. In fact, it is confusing. In LittleJ, it has been replaced by a more meaningful `type()` function.
 
@@ -242,7 +239,7 @@ JavaScript's `typeof` operator is not particularly helpful. In fact, it is confu
 
 - `"boolean"`, `"number"`, `"string"`, `"array"`, `"object"`, `"function"`, `"null"`.
 
-JS Equivalent:
+**JS Equivalent:**
 ```js
 var type = function (x) {
     if (x === null) { return 'null'; }
@@ -251,11 +248,11 @@ var type = function (x) {
 };
 ```
 
-#### 6.2 `del()`
+#### 7.2 `del()`
 
 `del()` replaces JavaScript's `delete` operator. It accepts two arguments, an object and key or an array and index. This makes it clear that `del()` cannot be used to delete variables.
 
-JS Equivalent:
+**JS Equivalent:**
 ```js
 var del = function (x, y) {
     if (global.type(x) === 'array') {
@@ -267,11 +264,11 @@ var del = function (x, y) {
 
 As opposed to `delete`, `del` does not leave any `undefined` holes when deleting from arrays.
 
-#### 6.3 `len()`
+#### 7.3 `len()`
 
 The length of arrays, strings and objects is available via the `len()` function. The `len()` of an object is the number of keys it has.
 
-JS Equivalent:
+**JS Equivalent:**
 ```js
 var len = function (x) {
     if (type(x) === 'object') { return Object.keys(x).length; }
@@ -287,40 +284,81 @@ var len = function (x) {
 };
 ``` 
 
-#### 6.4 `keys()`
+#### 7.4 `keys()`
 
 `keys()` in LittleJ returns the all the keys in an object.
 
-JS Equivalent: 
+**JS Equivalent:** 
 ```js
 var keys = Object.keys;
 ```
 
-#### 6.4.1 `KeyError`
+#### 7.4.1 `KeyError`
 
 In JS, trying to retrieve a non-existent key from an object results in `undefined`. There is no `undefined` in LJ; instead, a `KeyError` is thrown. The `underbar.l.js` library has a function `_.hasKey` which should be used if the unsure about any key.
 
-### The rest of this article is incomplete.
-### The following is rough sketch.
+#### 7.5 `str()`
 
-#### 6.5 `str()`
+`str(x)` is the string representation of `x`. If an array or object is passed to `str`, its JSON-like representation is returned.
 
-#### 6.6 `append()`
+**JS Equivalent:**
+```js
+var str = function (x) {
+    if (typeof x === 'object') { return JSON.stringify(x); }
+    return String(x);
+};
+```
 
-#### 6.7 `assert()`
+#### 7.6 `append()`
+
+This function appends an element to the end of an array.
+
+**JS Equivalent:**
+```js
+var append = function (arr, elt) { return arr.push(elt); };
+```
+
+#### 7.7 `assert()`
+
+Provides a way to throw an `AssertionError` if the current state of the program is unexpected or detrimental. It takes two arguments, the expression to be asserted and the message to be displayed on failure.
+
+**JS Equivalent:**
+```js
+var assert = function (expr, msg) {
+    if (expr) { return null; }
+    throw new Error('AssertionError: ' + msg);
+};
+```
 
 #### 6.8 `ord()`
 
+Returns the integer ordinal of an one-character string.
+
+**JS Equivalent:**
+```js
+var ord = function (c) { return c.charCodeAt(0); };
+```
+
 #### 6.9 `chr()`
+
+Returns a string of one character with supplied ordinal. Input should be in the range  0 to 256, both included.
+
+**JS Equivalent:**
+```js
+var chr = function (i) { return String.fromCharCode(i); };
+```
+
+## The following sections are far from complete.
+## They are a mere blueprint for documentation.
 
 #### 6.10 `math`
 
 #### 6.11 `print` (bonus)
 
-#### 6.12 [equalizeLJ.js](https://github.com/sumukhbarve/jispy/blob/master/equalizeLJ.js)
+#### 6.12 [setupLJ.js](https://github.com/sumukhbarve/jispy/blob/master/setupLJ.js)
 
 **Note:**  
-LittleJ's `type()` function has a [JavaScript equivalent](http://javascript.crockford.com/code.html). Before running a LittleJ program in JavaScript, `type()` (and a few other inbuilts) should be defined in JavaScript. Having done so, LittleJ continues to be a strict subset of JavaScript. The job of so setting-up JavaScript for handling LittleJ programs is done by [equalizeLJ.js](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).
+LittleJ's `type()` function has a [JavaScript equivalent](http://javascript.crockford.com/code.html). Before running a LittleJ program in JavaScript, `type()` (and a few other inbuilts) should be defined in JavaScript. Having done so, LittleJ continues to be a strict subset of JavaScript. The job of so setting-up JavaScript for handling LittleJ programs is done by [setupLJ.js](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).
 
 ### 7. Bitwise operators,  `==`, `!=` `++` and `--` are excluded.
 

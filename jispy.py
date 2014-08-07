@@ -655,6 +655,10 @@ def makeEnvClass(maxDepth=None): # maxDepth is private
         def makeChild(self, params=[], args=[]):
             "Creates an Env with current Env `self` as parent."
             return Env(params=params, args=args, parent=self);
+        def setDepth(self, depth):
+            self.depth = depth;
+            if maxDepth and self.depth >= maxDepth:
+                raise LJRuntimeErr('maximum call depth exceeded');
         #def show(self):
         #    "Helps with debugging."
         #    out = '\n';
@@ -828,12 +832,11 @@ def run(tree, env, maxLoopTime=None, writer=None):
             "Helps invokes non-native functions."
             if len(args) != len(func.params):
                 raise LJTypeErr('incorrect no. of arguments ... (%s)' % lj_repr(args)[1:-1]);            
-            if func.crEnv is None: raise Exception();        # internal error
+            if func.crEnv is None: raise Exception();           # internal error
             assert func.crEnv is not None;
-            newEnv = func.crEnv.makeChild(func.params, args);   # A function's parent scope is the one in which it was created.
-            #print 'old env = ', 'Global' if env.isGlobal else env;
-            #print 'new env = ', newEnv;
-            treeClone = cloneLi(func.tree);                    # shields func.tree from being mutated
+            newEnv = func.crEnv.makeChild(func.params, args);   # A function is executed in its environ of creation
+            newEnv.setDepth(env.depth + 1);                     # Depth of newEnv is changed to invocation_env's depth + 1
+            treeClone = cloneLi(func.tree);                     # shields func.tree from being mutated
             #print 'bodyClone = ', bodyClone, '\n';
             try:
                 run(treeClone, newEnv, maxLoopTime, writer);
@@ -1368,7 +1371,7 @@ class Runtime(object):
         tmpRT = Runtime(self.maxDepth, self.maxLoopTime, self.writer);
         tmpRT.runG(prog, console);
 
-def console(rt=None, semify=False, prompt='jispy> '):       # semify __tries__ to auto-appends semicolons (as required)
+def console(rt=None, semify=False, prompt='LJ> '):       # semify __tries__ to auto-appends semicolons (as required)
     "This is REPL-like, but not really a REPL."
     original_prompt = prompt;
     if not rt: rt = Runtime();                              # Don't put rt=Runtime() as a default argument.
