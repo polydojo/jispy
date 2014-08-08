@@ -171,10 +171,10 @@ def lex(s):
                 raise LJSyntaxErr('unexpected refinement ' + x);
             # otherwise...
             poken = tokens[-1]; # previous token
-            if poken not in [sym('}'), sym(']'), sym(')')]:
-                raise LJSyntaxErr('unexpected token ' + x);
-            # otherwise...
-            splitLi = x[1 : ].split('.');
+            if not (poken in '})]' or isValidName(poken)):          # Note: `in` is weaker than `is`.
+                raise LJSyntaxErr('unexpected token ' + x + poken); # Thus,
+            # otherwise...                                          #      poken in [sym('}'), sym(')'), sym(']')]
+            splitLi = x[1 : ].split('.');                           #   is not used.
             map(subscriptify, splitLi);
         else: # if x[0] != '.'
             splitLi = x.split('.');
@@ -186,7 +186,7 @@ def lex(s):
                 raise LJSyntaxErr('unexpected token ' + baseId);
     
     def atomizeNS(x):
-        "Identify (& return) bools, numbers, st & names."
+        "Identify (& return) bools, numbers, strings & names."
         if x in uKeywords:
             raise LJSyntaxErr('unexpected keyword ' + x);
         elif x in badsym:
@@ -219,8 +219,10 @@ def lex(s):
         tokens.append(s[1 : -1].decode('string_escape'));
     
     for seg in segmentify(s):
-        if seg.startswith('"') or seg.startswith("'"): lexS(seg);
-        else: lexNS(seg);
+        if seg.startswith('"') or seg.startswith("'"):
+            lexS(seg);
+        else:
+            lexNS(seg);
     return [sym('var?')] + tokens;                             # UNINTERNED symbol, indicating that a var statement may follow.
 
 #############################################################
@@ -353,8 +355,8 @@ def yacc(tokens):
                 assert type(init[0]) is Name;                # indices:   0  1  2   3  4 
                 assert init[1] is sym('=');
             except AssertionError:
-                raise LJSyntaxErr('illegal var statement');  # TODO: Currently, `var i = 0, i += 1` raises "illegal var statement".
-            rhsParsedExp = parseExp(init[2 : ]);             #        Should it raise "i is already defined"?
+                raise LJSyntaxErr('illegal var statement');
+            rhsParsedExp = parseExp(init[2 : ]);
             tree.append(['init', init[0], rhsParsedExp]);
         return semiPos + 1;
 
@@ -1066,7 +1068,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
                 if len(expLi) == 1: break;
             return expLi;
     
-        def simpleEval(expLi):                              # TODO: remove this method.
+        def simpleEval(expLi):                              # TODO: remove this function.
             "Evaluates unary and binary operations."
             return(allBinary(allUnary(expLi)));
         # - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -1321,7 +1323,7 @@ def addNatives(env, dicty):
 class Runtime(object):
     "Represents a context for running (possibly many) programs."
     
-    def __init__(self, maxDepth=None, maxLoopTime=None, writer=sys.stdout.write):
+    def __init__(self, maxLoopTime=None, maxDepth=None, writer=sys.stdout.write):
         "Initializes a Runtime, which has a single global Env."
         self.gEnv = makeEnvClass(maxDepth)();
         self.writer = writer;
