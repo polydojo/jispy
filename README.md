@@ -236,12 +236,74 @@ Please note that the LittleJ program may reassign all natives; and a native vari
  LJ> 
 ```
 
+##  Known Issues:
+
+#### 1. Phony `&&` and `||` operators:
+
+The `&&` and `||`, operators behave like the following functions:
+```js
+var andand = function (a, b) { if (a) { return b; } return a; },
+    oror   = function (a, b) { if (a) { return a; } return b; };
+```
+That is, both operands to these operators are **ALWAYS** evaluated.
+
+Let's say we want to write a function `pSquare` which squares only positive numbers. If a non-positive number is passed as input, `'bad input'` should be returned.
+
+Here's an instinctive version of `pSquare`:
+```js
+LJ> var pSquare = function (n) {        
+...     if (type(n) === 'number' && n > 0) { return n * n; }    
+...     return 'bad input';    
+... };
+LJ> pSquare('what?');
+TypeError: bad operands for binary > ... "string" === "number" && "what?" > 0
+LJ> 
+```
+With `n` as `'what?'`, since `type('what?') === 'number'` is `false`, the condition `'what?' > 0` should **not** be evaluated. But Jispy (incorrectly) tries to evaluate it and raises a `TypeError` in the process.
+
+The workaround is to use conditionals:
+```js
+LJ> var pSquare = function (n) {        
+...     if (type(n) === 'number') { if (n > 0) { return n * n; } }      
+...     return 'bad input';     
+... };
+LJ> pSquare('what?');
+"bad input"
+LJ> 
+```
+
+### 2) Trailing dots aren't handled:
+
+```js
+LJ> var obj = {alphas: {a: 'apple', b: 'ball'}};
+LJ> obj.alphas.a;           // works as expected
+"apple"
+LJ> obj    .alphas    .a;   // also works as expected (leading dots)
+"apple"
+LJ> obj.    alphas.    a;   // doesn't yet work (trailing dots)
+SyntaxError: unexpected trailing . (dot) obj.
+LJ> // This issue usually pops up in refinements spread over multiple lines:
+LJ> obj.alphas. 
+...             a;
+SyntaxError: unexpected trailing . (dot) obj.alphas.
+LJ> 
+```
+The workaround is to use leading dots only.
+
+#### The plague of semicolon insertion:
+
+Due to JavaScript's semicolon insertion, using leading dots may change the meaning of your program (in JavaScript). Thus, spreading refinements over multiple lines is not advisable.
+
+LittleJ does not (and will not) include semicolon insertion. This is one area where the semantic meaning of a LittleJ program may not be retained in JavaScript. Ways of mitigating this issue are currently being explored.
+
 ---------------------------------------------------------------------
 
-If you find Jispy interesting, **PLEASE FEEL FREE TO CONTRIBUTE.**
+### That's all folks!
+
+Thank you for showing interest in Jispy.
+
+You are welcome to experiment with Jispy. **PLEASE FEEL FREE TO CONTRIBUTE.**
 
 If you use Jispy in any of your projects, **PLEASE LET ME KNOW.**
 
 ---------------------------------------------------------------------
-
-Above documentation is incomplete. More shall soon be added.

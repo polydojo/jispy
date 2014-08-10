@@ -330,7 +330,7 @@ var assert = function (expr, msg) {
 };
 ```
 
-#### 6.8 `ord()`
+#### 7.8 `ord()`
 
 Returns the integer ordinal of an one-character string.
 
@@ -339,7 +339,7 @@ Returns the integer ordinal of an one-character string.
 var ord = function (c) { return c.charCodeAt(0); };
 ```
 
-#### 6.9 `chr()`
+#### 7.9 `chr()`
 
 Returns a string of one character with supplied ordinal. Input should be in the range  0 to 256, both included.
 
@@ -348,19 +348,24 @@ Returns a string of one character with supplied ordinal. Input should be in the 
 var chr = function (i) { return String.fromCharCode(i); };
 ```
 
-## The following sections are far from complete.
-## They are a mere blueprint for documentation.
+#### 7.10 `math`
 
-#### 6.10 `math`
+The same as `Math` in JavaScript.
 
-#### 6.11 `print` (bonus)
+**JS Equivalent:**
+```js
+var math = Math;
+```
 
-#### 6.12 [setupLJ.js](https://github.com/sumukhbarve/jispy/blob/master/setupLJ.js)
+#### 7.11 `print` (bonus)
 
-**Note:**  
-LittleJ's `type()` function has a [JavaScript equivalent](http://javascript.crockford.com/code.html). Before running a LittleJ program in JavaScript, `type()` (and a few other inbuilts) should be defined in JavaScript. Having done so, LittleJ continues to be a strict subset of JavaScript. The job of so setting-up JavaScript for handling LittleJ programs is done by [setupLJ.js](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).
+This is a non-standard output function. Jispy provides it by default, but other implementations of LittleJ may not.
 
-### 7. Bitwise operators,  `==`, `!=` `++` and `--` are excluded.
+#### 7.12 [setupLJ.js](https://github.com/sumukhbarve/jispy/blob/master/setupLJ.js)
+  
+Before running a LittleJ program in a full JavaScript environment, the environment should be setup for LittleJ. That is, LittleJ's inbuilts discussed above should be defined. [setupLJ.js](https://github.com/sumukhbarve/jispy/blob/master/setupLJ.js) does exactly that.
+
+### 8. Bitwise operators,  `==`, `!=` `++` and `--` are excluded.
 
 Thesedays, we realize that a high level programming language such as JavaScript doesn't need bitwise operators. They are not included in LittleJ.
 
@@ -368,7 +373,7 @@ Javascript's `==` and `!=` operators are nothing but a recipe for disaster. They
 
 The increment and decrement operators are not really required. Use shorthand assignment `+=` and `-=` instead. Far more readable. 
 
-### 8. Relational (and equality) operators cannot be chained
+### 9. Relational (and equality) operators cannot be chained
 
 Try the following code in your browser's console. It might shock you.
 
@@ -380,34 +385,29 @@ console.log(0 >= 0 >= 1);   // --> true;  (true >= 1) is true
 
 The above example aptly demonstrates that JavaScript's relational operators should not be chained. LittleJ doesn't allow you to.
 
-### 9. Blocks are required wherever legal
+### 10. Blocks are required wherever legal
 
-The following types of statements are included in LJ:
+An exception is made when `if` immediately follows `else`. 
 
-+ `if` (including `else` and if-else ladders)
-+ `while`
-+ conventional `for`
+Further, `if`, `while` and `for` statements must be supplied control conditions.
 
-Each one of the above statements requires a block `{  }`.
-
-The `for` loop has the following form:
 ```js
-for (assignment; condition; increment) {
-   body
-}
+// Thus,
+while () { "cheeky expression" } // is ILLEGAL, (no condition)
+while (true) { }                 // is also illegal (empty block).
+// But,
+while (true) { "cheeky expression" } // is legal.
 ```
 
-Each clause, i.e. `assignment`, `condition`, `increment` and `body` 
-
-### 10. Keywords
+### 11. Keywords
 
 The following JS keywords are meaningful in LJ:
 ```js
-var if else while for break function return true false
+var if else while for break function return true false null
 ```
 
 All other JS keywords along with the words ` undefined`, `NaN` and `Infinity` are meaningless in LJ and **may not be used**.
 
-### 11. Examples
+### 12. Examples
 
-See [`underbar.l.js`](https://github.com/sumukhbarve/jispy/blob/master/underbar.l.js). It is written in pure LJ.
+The library [stdlib.l.js](https://github.com/sumukhbarve/jispy/blob/master/stdlib.l.js) is written purely in LittleJ. It should serve as a meaningful example. It contains a collection of string, array and object manipulators. The library is currently under active development and may change from the time of writing. (Its name is likely to change to utils.l.js or underbar.l.js)
