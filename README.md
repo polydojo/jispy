@@ -179,7 +179,7 @@ The console accepts three optional arguments (in order):
 
 - `rt`: The `Runtime` in which each line (or lines) should be run. Defaults to `None`, in which case a fresh `Runtime` is created.
 - `semify`: A boolean, defaults to `False`. If `True` (or truthy), the console *tries* to add semicolons to the end of lines as required.
-- `prompt`: The input prompt. Defaults to `"LittleJ> "`
+- `prompt`: The input prompt. Defaults to `"LJ> "`
 
 Originally, the `console()` was not a REPL. It now is. (But the name has stuck.)
 
@@ -272,7 +272,9 @@ LJ> pSquare('what?');
 LJ> 
 ```
 
-### 2) Trailing dots aren't handled:
+Fixing `&&` and `||` will requires partially re-writing the parser and the interpreter. There are no immediate plans for such a fix.
+
+### 2. Trailing dots aren't handled:
 
 ```js
 LJ> var obj = {alphas: {a: 'apple', b: 'ball'}};
@@ -290,7 +292,7 @@ LJ>
 ```
 The workaround is to use leading dots only.
 
-#### The plague of semicolon insertion:
+#### 2.1 The plague of semicolon insertion:
 
 Due to JavaScript's semicolon insertion, using leading dots may change the meaning of your program (in JavaScript). Thus, spreading refinements over multiple lines is not advisable.
 
