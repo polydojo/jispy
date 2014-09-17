@@ -1,13 +1,13 @@
 # LittleJ
 
-The subset of JavaScript interpreted by Jispy is fondly called LittleJ (or **LJ**). **It is a strict subset of JavaScript,** strict in two senses:
+The subset of JavaScript interpreted by Jispy is fondly called LittleJ (or **LJ**). ***It is a strict subset of JavaScript,*** strict in two senses:
 
 1. LJ is a *syntactic and semantic subset* of JS.
 2. LJ is *far less permissive* than JS.
 
 Thus, every valid LittleJ program is also a valid JavaScript program, but every valid JavaScript program is not a valid LittleJ program.
 
-**Note:** This document and each document linked herein is work in progress. 
+**Note:** This document and documents linked herein are work in progress. However, this document is likely to retain most of it's current form. 
 
 LJ *borrows heavily* from [Douglas Crockford's JS Conventions](http://javascript.crockford.com/code.html). In a few cases, it is stricter than [JSLint](http://jslint.com/).
 
@@ -15,9 +15,9 @@ LJ *borrows heavily* from [Douglas Crockford's JS Conventions](http://javascript
 
 ### 1. No `undefined`
 
-Most programming languages have some notion of emptiness. It may be called `void`, `None`, `null`, `nil` etc. JavaScript calls it `undefined` and also has `null`. [This can be very confusing.](http://javascriptweblog.wordpress.com/2010/08/16/understanding-undefined-and-preventing-referenceerrors/).
+Most programming languages have some notion of emptiness. It may be called `void`, `None`, `null`, `nil` etc. JavaScript calls it `undefined` and also has `null`. [This can be very confusing.](http://javascriptweblog.wordpress.com/2010/08/16/understanding-undefined-and-preventing-referenceerrors/)
 
-JavaScript's **overindulgence** in `undefined` *masks otherwise easily detectable errors*. Choosing to drop it makes the language far more robust and dependable. `undefined` has beenis excluded from LittleJ; it is meaningless and may not be used. This has the following implications:
+JavaScript's **overindulgence** in `undefined` *masks otherwise easily detectable errors*. Choosing to drop it makes the language far more robust and dependable. `undefined` has excluded from LittleJ. It may not be used. This has the following implications:
 
 #### 1.1 All variables must be initialized.
 
@@ -43,17 +43,17 @@ sayHi = function (name) { print('Hi ' + name + '!'); return null;}; // is legal.
 
 #### 1.3 No `arguments`
 
-In JS, if you pass too few arguments to a function, the remaining arguments take `undefined`. As there's no `undefined` in LJ, you may not pass too few arguments to any function. As passing too few arguments is illegal, so is passing too many.
+In JS, if you pass too few arguments to a function, the remaining arguments take `undefined`. As there's no `undefined` in LJ, you may not pass too few arguments to any function. For consistency, passing too many arguments has also been made illegal.
 
 ```js
-// Thus, assuming reduce to be Array.prototype.reduce.call
-add = function () { return sum(arguments); }; // is ILLEGAL
-// Instead, use:
-add = function (args) { return sum(args); };  // (legal)
+// Thus,
+var add = function () { return sum(arguments); }; // is ILLEGAL
+// Use this:
+var add = function (args) { return sum(args); };  // (legal)
 ```
 ### 2. No Implied Globals
 
-In JavaScript, any variable which wasn't defined with a `var` statement is assumed to belong to the global scope. Such variables are called implied globals and [are very bad](http://yuiblog.com/blog/2006/06/01/global-domination/) and make you code vulnerable.
+In JavaScript, any variable which wasn't defined with a `var` statement is assumed to belong to the global scope. Such variables are called implied globals and [are very bad](http://yuiblog.com/blog/2006/06/01/global-domination/). They make your code inefficient and vulnerable.
 
 To remedy this problem, LittleJ requires all variables to be initialized before use, via `var` statements. Further, once initialized, they may not be reinitialized (in the same scope.)
 
@@ -84,11 +84,11 @@ var a = 1, b = 2; var c = 3; // is ILLEGAL
 var a = 1, b = 2, c= 3; // is legal.
 ```
 
-Because of this rule, even a programmer who is unaware of functional scoping won't go wrong with scoping. Similarly, programmers who work closely with block-scoped languages will be less likely to misread code.
+Because of this rule, even if a programmer is unaware of functional scoping, he won't land into any scope-related misunderstanding.
 
 ### 4. First Class Functions
 
-Functions are one of the very best parts of JavaScript. LittleJ is proud to include them. The meaning of the "Functions are first class citizens" is:
+Functions are one of the very best parts of JavaScript. LittleJ is proud to include them. The meaning of the phrase "Functions are first class citizens" is:
 
 + A function may return a function.
 + A function may be passed (as an argument) to a function.
@@ -96,7 +96,7 @@ Functions are one of the very best parts of JavaScript. LittleJ is proud to incl
 
 #### 4.1 Function expressions only please!
 
-As with most things in JavaScript, there is a bad part associated with function declarations, namely **function hoisting**. It allows us to use functions before we declare them. This unsettles me.
+As with most things in JavaScript, there is a bad part associated with function declarations, namely **function hoisting**. It allows us to use functions before we declare them. Moreover, it makes your code confusing.
 
 Luckily, function values (created via function expressions) are not hoisted. LittleJ supports function expressions only. Funtion declarations have been dropped.
 
@@ -104,12 +104,12 @@ Luckily, function values (created via function expressions) are not hoisted. Lit
 // Thus,
 function add(a, b) { return a + b; } // is ILLEGAL (SyntaxError).
 // But,  
-add = function (a, b) { return a + b; } // is legal
+var add = function (a, b) { return a + b; } // is legal
 ```
 
 #### 4.2 Immediate invocation:
 
-When a function is to be invoked immediately, wrap the entire invocation in a pair of parenthesis. This not only makes your intention clear, but (in some cases) is required by JavaScript.
+When a function is to be invoked immediately, wrap the entire invocation in a pair of parenthesis. This not only makes your intentions clear, but (in some cases) is required by JavaScript.
 
 ```js
 //That is, use,
@@ -123,17 +123,17 @@ Currently, only anonymous functions are supported. This is not likely to change 
 
 ### 5. No `NaN` and no `Infinity`
 
-Getting rid of `undefined` exposed a huge class of errors that may go unchecked in JS. Getting rid of `NaN` and `Infinity` as well makes the programming extremely robust, reliable and clear.
+Getting rid of `undefined` exposed a huge class of errors that may go unchecked in JS. Getting rid of `NaN` and `Infinity` as well makes the programming extremely reliable, robust and clear.
 
-Like `undefied`, `NaN` and `Infinity` *mask too many errors that may otherwise be easily detected*. We are better off without them, than with them.
+Like `undefied`; `NaN` and `Infinity` *mask too many errors that may otherwise be easily detected*. We are better off without them.
 
 #### 5.1 You can't do meaningless stuff!
 
 ```js
 // That is,
-a = 'James Bond' / 700; // is ILLEGAL (TypeError). It is not NaN.
+a = 'James Bond' / 700; // is ILLEGAL (TypeError).  It is not NaN.
 // And
-a = 99 / 0; // is also ILLEGAL (ZeroDivisionError).
+a = 99 / 0; // is also ILLEGAL (ZeroDivisionError). It is not Infinity.
 ```
 
 #### 5.2 No `try`-`catch` blocks
@@ -154,11 +154,13 @@ In JavaScript, the output would be `This is JS`. In LittleJ, on account of `Zero
 
 Thus, unfortunately, `try`-`catch` blocks are not included in LittleJ. If you can come up with a way to include them meaningfully, please let me know. I shall be forever grateful. 
 
+The above problem is not specific to `ZeroDivisionError`, it applies to all errors thrown by LittleJ but not by JavaScript.
+
 ### 6. No `this`
 
-In JavaScript, there are four function invocation patterns. The value of `this` is determined by the invocation pattern used. `this` makes JavaScript look like Java. Apart from that, it only rarely does anything useful.
+In JavaScript, there are four function invocation patterns. The value of `this` is determined by the invocation pattern used. Apart from making JavaScript look a lot like Java, `this` rarely does anything useful.
 
-JavaScript's constructors are do a very good job at diverting our attention from its truly prototypal nature. Why do we need to use constructors (or equally classes) when objects are object factories! We don't. No exceptions.
+Unfortunately, JavaScript's constructors do a very great job at diverting our attention from its truly prototypal nature. Why do we need to use constructors (or equally classes) when objects are object factories! We shouldn't.
 
 #### 6.1 Builders vs Constructors
 
@@ -210,12 +212,12 @@ In JS, names of constructors conventionally begin with a capital letters. Being 
 There are two more limitations, namely:
 
 - Identifier names may not include the `$` key.
-- Identifier names may not include dangline (i.e. leading or trailing) underscores.
+- Identifier names may not include dangling (i.e. leading or trailing) underscores.
 #### 6.1.3 No `Foo.prototype`
 
 `this` comes with its share of goodies, namely the prototype chain. Prototypal inheritance is perhaps the best model for code reuse. However, JavaScript's implementation of prototypal inheritance is confusing (and perhaps irritating.)
 
-As there are no constructors in LittleJ, JavaScript-like prototype chains are not supported. However, the `underbar.l.js` library (currently under development) should largely fill this void. It contains the method `_.setPrototype()` which is analogous to Lua's `setmetatable()`.
+As there are no constructors in LittleJ, JavaScript-like prototype chains are not supported. However, the `stdlib.l.js` library (currently under development) should largely fill this void. It contain an `object.create()` method analogous to JavaScript's `Object.create()`.
 
 #### 6.1.4 No `in`
 
@@ -255,14 +257,14 @@ var type = function (x) {
 **JS Equivalent:**
 ```js
 var del = function (x, y) {
-    if (global.type(x) === 'array') {
+    if (type(x) === 'array') { // above defined `type()` used here
         x.splice(y, 1);
         return true;
     } else { return delete x[y]; }
 }
 ```
 
-As opposed to `delete`, `del` does not leave any `undefined` holes when deleting from arrays.
+As opposed to `delete`, `del()` does not leave any `undefined` holes when deleting from arrays.
 
 #### 7.3 `len()`
 
@@ -295,7 +297,7 @@ var keys = Object.keys;
 
 #### 7.4.1 `KeyError`
 
-In JS, trying to retrieve a non-existent key from an object results in `undefined`. There is no `undefined` in LJ; instead, a `KeyError` is thrown. The `underbar.l.js` library has a function `_.hasKey` which should be used if the unsure about any key.
+In JS, trying to retrieve a non-existent key from an object results in `undefined`. There is no `undefined` in LJ; instead, a `KeyError` is thrown. The `stdlib.l.js` library has a function `object.hasOwnProperty()` which should be used in case of uncertainty.
 
 #### 7.5 `str()`
 
@@ -369,9 +371,9 @@ Before running a LittleJ program in a full JavaScript environment, the environme
 
 Thesedays, we realize that a high level programming language such as JavaScript doesn't need bitwise operators. They are not included in LittleJ.
 
-Javascript's `==` and `!=` operators are nothing but a recipe for disaster. They, likewise, are not included in LittleJ.
+Javascript's `==` and `!=` operators are nothing but a recipe for disaster. They, likewise, are not included in LittleJ. Please stick to `===` and `!==` operators.
 
-The increment and decrement operators are not really required. Use shorthand assignment `+=` and `-=` instead. Far more readable. 
+The increment and decrement operators are not really required. Use shorthand assignment `+=` and `-=` instead. This practice results in more reliable and more readable code. 
 
 ### 9. Relational (and equality) operators cannot be chained
 
@@ -393,10 +395,10 @@ Further, `if`, `while` and `for` statements must be supplied control conditions.
 
 ```js
 // Thus,
-while () { "cheeky expression" } // is ILLEGAL, (no condition)
+while () { "cheeky expression"; } // is ILLEGAL, (no condition)
 while (true) { }                 // is also illegal (empty block).
 // But,
-while (true) { "cheeky expression" } // is legal.
+while (true) { "cheeky expression"; } // is legal.
 ```
 
 ### 11. Keywords
