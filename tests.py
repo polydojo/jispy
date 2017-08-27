@@ -425,6 +425,19 @@ tests = [
             };
             print(rot13('zing&&kong!!') === 'mvat&&xbat!!');
     ''',
+    # -------------------------------------------------------
+    ''' // Test-30: Closure (Similar to Test-23)
+        var mkAddX = null, add1 = null, add100 = null;
+        mkAddX = function (x) {
+            return function (n) {
+                return x + n;
+            };
+        };
+        add1 = mkAddX(1);
+        add100 = mkAddX(100);
+        
+        print (add1(1) === 2 && add100(100) === 200);
+    ''',
 ];
 
 j = -1;

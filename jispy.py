@@ -1,7 +1,15 @@
-#############################################################
-#            Jispy: JavaScript Interpreter in Python        #
-#                (c) Sumukh Barve, 2014;                    #
-#############################################################
+#############################################################################
+#                                                                           #
+#   Jispy: JavaScript Interpreter in Python                                 #
+#   Copyright (c) 2017 Polydojo, Inc.                                       #
+#                                                                           #
+#                                                                           #
+#                                                                           #
+#   This Source Code Form is subject to the terms of the Mozilla Public     #
+#   License, v. 2.0. If a copy of the MPL was not distributed with this     #
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.                #
+#                                                                           #
+#############################################################################
 
 import re;
 import time;
@@ -578,7 +586,6 @@ def yacc(tokens):
             j = semiPos + 1;
     return tree;
 
-
 #############################################################
 #                    SEMANTIC ANALYSIS                      #
 #############################################################
@@ -600,15 +607,30 @@ def gmob(li, i): # GetMatchingOpeningBacket. Cousin of gmb()
         if count == 0: return j;
     raise LJSyntaxErr('unbalanced bracket ' + right);
 
-def cloneLi(li):
-    "Creates a NON-ALIAS clone of a (possibly nested) list."
-    ans = [];
-    for elt in li:
-        if type(elt) is list:
-            ans.append(cloneLi(elt));
+#def cloneLi(li):
+#    "Creates a NON-ALIAS clone of a (possibly nested) list."
+#    ans = [];
+#    for elt in li:
+#        if type(elt) is list:
+#            ans.append(cloneLi(elt));
+#        else:
+#            ans.append(elt);
+#    return ans;
+
+def cloneTree (iTree):
+    "";
+    oTree = [];
+    for iNode in iTree:
+        if type(iNode) is Function:
+            oNode = Function(*map(cloneTree, [iNode.params, iNode.tree, iNode.iTokens]));
+        elif type(iNode) is list:
+            oNode = cloneTree(iNode);
         else:
-            ans.append(elt);
-    return ans;
+            oNode = iNode;
+        oTree.append(oNode);
+    return oTree;
+cloneLi = cloneTree;    # Backward compatible alias.
+            
 
 def isFalsy(val):                                             # Python and JS have (slightly) different ideas of falsehood.
         "Tells if a value is falsy."                          # [] and {} are falsy in python, but truthy is JS.
@@ -838,7 +860,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
             assert func.crEnv is not None;
             newEnv = func.crEnv.makeChild(func.params, args);   # A function is executed in its environ of creation
             newEnv.setDepth(env.depth + 1);                     # Depth of newEnv is changed to invocation_env's depth + 1
-            treeClone = cloneLi(func.tree);                     # shields func.tree from being mutated
+            treeClone = cloneTree(func.tree);                   # shields func.tree from being mutated
             #print 'bodyClone = ', bodyClone, '\n';
             try:
                 run(treeClone, newEnv, maxLoopTime, writer);
