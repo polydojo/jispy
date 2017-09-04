@@ -1,6 +1,6 @@
 # Jispy
 
-#### A JavaScript Interpreter In Python
+#### Jispy: A JavaScript interpreter In Python.
 
 Jispy is an interpreter for a strict subset of JavaScript, fondly called [LittleJ (LJ)](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md). It employs recursive descent for parsing and is very easily extendable.
 
@@ -8,7 +8,9 @@ Jispy is an interpreter for a strict subset of JavaScript, fondly called [Little
 
 Jispy's original vision was to seamlessly allow embedding JavaScript programs in Python projects. By default, it doesn't expose the host's file system or any other sensitive element. Some checks on infinite looping and infinite recursion are provided to tackle possibly malicious code.
 
-See [LICENSE.md](https://github.com/sumukhbarve/jispy/blob/master/LICENSE.md) and [DEDICATION.md](https://github.com/sumukhbarve/jispy/blob/master/DEDICATION.md) for project license and dedication respectively.
+#### Maintainance and Licensing
+
+The project is currently maintined by the engineering team at [Polydojo](https://twitter.com/polydojo). See [LICENSE.txt](https://github.com/sumukhbarve/jispy/blob/master/LICENSE.txt) and [DEDICATION.md](https://github.com/sumukhbarve/jispy/blob/master/DEDICATION.md) for project license and dedication respectively.
 
 #### Installation
 Simply include **jispy.py** in your project directory. For convenience, you may wish to also include stdlib.l.js, which provides multiple utilities and manipulators.
@@ -66,6 +68,8 @@ LJ> for (i = 0; i < len(obj); i += 1) {                    // tab..
 "d for dog"
 LJ> 
 ```
+
+*Note: Future versions of LittleJ (and hence Jispy) may no longer support `for` loops in favor of `while` loops and `_.each(.)` style iteration. If you'd like to maintain backward compatability, we recommend using `array.each` from `stdlib.l.js`.*
 
 The above example uses the inbuilt `len()` and `keys()` functions. These, along with other inbuilts have been described in [LittleJ's specification](https://github.com/sumukhbarve/jispy/blob/master/LittleJ.md).
 
