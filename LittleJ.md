@@ -30,6 +30,19 @@ var a, b, c, d, e, f, g; // is ILLEGAL (SyntaxError);
 var a = null, b = null;  // is legal
 ```
 
+##### Workaround
+
+Long `var` statements are not pretty. You can easily avoid them by using a container/namespace for your code.
+
+
+```js
+var myApp = {};
+
+myApp.PIE = 3.142;
+myApp.square = function (x) { return x * x; };
+// ... etc. ...
+```
+
 #### 1.2 Every function must return
 
 In JS, functions that don't have an explicit return statement return `undefined`. As LJ lacks `undefined`, all functions must explicitly return something.

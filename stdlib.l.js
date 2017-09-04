@@ -1,8 +1,17 @@
-////////////////////////////////////////////////////////////
-//      The STANDARD LIBRARY shipped with Jispy           //
-//      Written purely in LittleJ (Jispy''s JS subset)    //
-//              (c) Sumukh Barve, 2014;                   //
-////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+//                                                                          //
+//  This is the STANDARD LIBRARY shipped with Jispy.                        //
+//  Written purely in LittleJ (Jispy's JS subset).                          //
+//                                                                          //
+//  Copyright (c) 2017 Polydojo, Inc.                                       //
+//                                                                          //
+//                                                                          //
+//  This Source Code Form is subject to the terms of the Mozilla Public     //
+//  License, v. 2.0. If a copy of the MPL was not distributed with this     //
+//  file, You can obtain one at http://mozilla.org/MPL/2.0/.                //
+//                                                                          //
+//////////////////////////////////////////////////////////////////////////////
+
 var string = {}, array = {}, object = {};
 (function () {
     'use strict';

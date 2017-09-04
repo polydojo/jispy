@@ -1,6 +1,6 @@
 #############################################################################
 #                                                                           #
-#   Jispy: JavaScript Interpreter in Python                                 #
+#   Jispy: A JavaScript interpreter in Python                               #
 #   Copyright (c) 2017 Polydojo, Inc.                                       #
 #                                                                           #
 #                                                                           #

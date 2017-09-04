@@ -306,6 +306,6 @@ Thank you for showing interest in Jispy.
 
 You are welcome to experiment with Jispy. **PLEASE FEEL FREE TO CONTRIBUTE.**
 
-If you use Jispy in any of your projects, **PLEASE LET ME KNOW.**
+If you use Jispy in any of your projects, **PLEASE LET US KNOW.**
 
 ---------------------------------------------------------------------
