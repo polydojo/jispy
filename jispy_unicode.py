@@ -85,34 +85,42 @@ map(badsym, uKeywords)
 
 #############################################################
 
-class LJErr(Exception): pass
+class LJErr(Exception):
+	pass
 
 
-class LJSyntaxErr(LJErr): pass
+class LJSyntaxErr(LJErr):
+	pass
 
 
-class LJTypeErr(LJErr): pass
+class LJTypeErr(LJErr):
+	pass
 
 
-class LJRuntimeErr(LJErr): pass
+class LJRuntimeErr(LJErr):
+	pass
 
 
-class LJReferenceErr(LJErr): pass
+class LJReferenceErr(LJErr):
+	pass
 
 
-class LJKeyErr(LJErr): pass
+class LJKeyErr(LJErr):
+	pass
 
 
-class LJIndexErr(LJErr): pass
+class LJIndexErr(LJErr):
+	pass
 
 
-class LJAssertionErr(LJErr): pass
+class LJAssertionErr(LJErr):
+	pass
 
 
 def isNameLike(s):
 	"Returns if a token is name-LIKE. 'if' IS name like."
 	if s == '_' or s == '$': return True
-	return re.findall(r'[a-z]\w*', s) == [s] and s[-1] != '_'
+	return re.findall(r'[a-z]\w*', s, re.UNICODE) == [s] and s[-1] != '_'
 
 
 def isValidName(s):
@@ -122,7 +130,8 @@ def isValidName(s):
 
 def strNum(n):
 	"Converts floats to (possibly int-like) strings."
-	return unicode(int(n)) if n == round(n) else unicode(n)
+	# DMJ: unicode?
+	return str(int(n)) if n == round(n) else str(n)
 
 
 def isDecimal(s):
@@ -160,7 +169,7 @@ def lex(s):
 		"Helps segmentify() with segmenting a single line."  # segmentifyLine() uses an FSM which looks as follows:
 		mode = 'code'
 		quote = None  #
-		ans = ['']  # .--> (CODE) <--> STRING
+		ans = ['']    # .--> (CODE) <--> STRING
 		for i in xrange(len(s)):  #
 			if mode == 'code' and quote is None:  # CODE is the start state and the only accepting state.
 				if s[i] in ['"', "'"]:
@@ -194,7 +203,7 @@ def lex(s):
 
 	def isPropertyName(s):
 		"Helps subscriptify() tell if `s` is a valid key."  # TODO: Currently, `a = {}; a.function = 1;` is legal;
-		return re.findall(r'\w+', s) == [s]  # BUT, `a = {function : 1};` is illegal. FIX THIS.
+		return re.findall(r'\w+', s, re.UNICODE) == [s]  # BUT, `a = {function : 1};` is illegal. FIX THIS.
 
 	def subscriptify(s):
 		"Helps handleDot() change dots to subscripts."
@@ -653,17 +662,17 @@ def gmob(li, i):  # GetMatchingOpeningBacket. Cousin of gmb()
 		sym(')'): sym('('),
 		sym(']'): sym('['),
 		sym('}'): sym('{')  # ,
-	};
-	right = li[i];
-	left = brackets[right];
-	count = 0;
+	}
+	right = li[i]
+	left = brackets[right]
+	count = 0
 	for j in xrange(i, -1, -1):  # i may be -ive
 		if li[j] == right:
-			count += 1;
+			count += 1
 		elif li[j] == left:
-			count -= 1;
+			count -= 1
 		if count == 0: return j;
-	raise LJSyntaxErr('unbalanced bracket ' + right);
+	raise LJSyntaxErr('unbalanced bracket ' + right)
 
 
 # def cloneLi(li):
@@ -677,32 +686,32 @@ def gmob(li, i):  # GetMatchingOpeningBacket. Cousin of gmb()
 #    return ans;
 
 def cloneTree(iTree):
-	"";
-	oTree = [];
+	""
+	oTree = []
 	for iNode in iTree:
 		if type(iNode) is Function:
-			oNode = Function(*map(cloneTree, [iNode.params, iNode.tree, iNode.iTokens]));
+			oNode = Function(*map(cloneTree, [iNode.params, iNode.tree, iNode.iTokens]))
 		elif type(iNode) is list:
-			oNode = cloneTree(iNode);
+			oNode = cloneTree(iNode)
 		else:
-			oNode = iNode;
-		oTree.append(oNode);
-	return oTree;
+			oNode = iNode
+		oTree.append(oNode)
+	return oTree
 
 
-cloneLi = cloneTree;  # Backward compatible alias.
+cloneLi = cloneTree  # Backward compatible alias.
 
 
 def isFalsy(val):  # Python and JS have (slightly) different ideas of falsehood.
 	"Tells if a value is falsy."  # [] and {} are falsy in python, but truthy is JS.
 	if not hasattr(val, '__call__'):
 		assert type(val) in [bool, float, unicode, list, dict, Function, type(None)];
-	return val in [False, 0.0, '', None];
+	return val in [False, 0.0, '', None]
 
 
 def isTruthy(val):
 	"Tells is a value is truthy."
-	return not isFalsy(val);
+	return not isFalsy(val)
 
 
 def makeEnvClass(maxDepth=None):  # maxDepth is private
@@ -711,51 +720,51 @@ def makeEnvClass(maxDepth=None):  # maxDepth is private
 
 		def __init__(self, params=[], args=[], parent=None):
 			if len(params) != len(args): raise Exception();  # internal error
-			self.update(zip(params, args));
-			self.parent = parent;
-			self.isGlobal = (parent is None);
+			self.update(zip(params, args))
+			self.parent = parent
+			self.isGlobal = (parent is None)
 			if self.isGlobal:
-				self.depth = 0;
+				self.depth = 0
 			else:
-				self.depth = self.parent.depth + 1;
+				self.depth = self.parent.depth + 1
 			if maxDepth and self.depth >= maxDepth:
-				raise LJRuntimeErr('maximum scope depth exceeded');
+				raise LJRuntimeErr('maximum scope depth exceeded')
 			if (self is self.parent):
-				raise Exception();  # internal error
+				raise Exception()  # internal error
 
 		def getEnv(self, key):  # used (mostly) internally
 			"Returns environment in which a variable appears."
-			d = 'Global' if self.isGlobal else self;
+			d = 'Global' if self.isGlobal else self
 			# print '\nlooking for %s in %s' % (key, d);
 			if key in self:
-				return self;
+				return self
 			elif not self.isGlobal:
-				return self.parent.getEnv(key);
-			raise LJReferenceErr('%s is not defined' % key);
+				return self.parent.getEnv(key)
+			raise LJReferenceErr('%s is not defined' % key)
 
 		def init(self, key, value):
 			"Initializes a variable in the currect environment."
 			if key not in self:
-				self[key] = value;
+				self[key] = value
 			else:
-				raise LJReferenceErr('%s is already defined' % key);
+				raise LJReferenceErr('%s is already defined' % key)
 
 		def assign(self, key, value):
 			"Resets the value of a variable in its own environment."
-			self.getEnv(key)[key] = value;
+			self.getEnv(key)[key] = value
 
 		def lookup(self, key):
 			"Looks up the value of a variable. (convenience)"
-			return self.getEnv(key)[key];
+			return self.getEnv(key)[key]
 
 		def makeChild(self, params=[], args=[]):
 			"Creates an Env with current Env `self` as parent."
-			return Env(params=params, args=args, parent=self);
+			return Env(params=params, args=args, parent=self)
 
 		def setDepth(self, depth):
-			self.depth = depth;
+			self.depth = depth
 			if maxDepth and self.depth >= maxDepth:
-				raise LJRuntimeErr('maximum call depth exceeded');
+				raise LJRuntimeErr('maximum call depth exceeded')
 				# def show(self):
 				#    "Helps with debugging."
 				#    out = '\n';
@@ -764,12 +773,12 @@ def makeEnvClass(maxDepth=None):  # maxDepth is private
 				#            out += '\t\t%s : %s\n' % (k, self[k]);
 				#    return out;
 
-	return Env;
+	return Env
 
 
 class LJJump(Exception):
 	def __str__(self):
-		return 'unexpected jump statement';
+		return 'unexpected jump statement'
 
 
 class LJReturn(LJJump): pass;
@@ -779,30 +788,30 @@ class LJBreak(LJJump): pass;
 
 
 def lj_repr(x):
-	if x is None: return 'null';
-	if type(x) is bool: return 'true' if x else 'false';
+	if x is None: return 'null'
+	if type(x) is bool: return 'true' if x else 'false'
 	if type(x) is float:
 		if x == round(x):
-			return unicode(int(x));
+			return unicode(int(x))
 		else:
-			return unicode(x);
+			return unicode(x)
 	if type(x) is unicode:
-		return '"' + x.replace('"', '\\"') + '"';
-	if type(x) in [Name, Symbol]: return x;
+		return '"' + x.replace('"', '\\"') + '"'
+	if type(x) in [Name, Symbol]: return x
 	if type(x) is list:
 		if not x: return '[]'  # corner case (see shaving)
-		out = '[';
-		for elt in x: out += lj_repr(elt) + ', ';
-		out = out[: -2];  # shave off trailing ", "
-		return out + ']';
+		out = '['
+		for elt in x: out += lj_repr(elt) + ', '
+		out = out[: -2]  # shave off trailing ", "
+		return out + ']'
 	if type(x) is dict:
 		if not x: return '{}';  # corner case
-		out = '{';
-		for k in x: out += lj_repr(k) + ': ' + lj_repr(x[k]) + ', ';
-		out = out[: -2];  # shave off trailing ", "
-		return out + '}';
+		out = '{'
+		for k in x: out += lj_repr(k) + ': ' + lj_repr(x[k]) + ', '
+		out = out[: -2]  # shave off trailing ", "
+		return out + '}'
 	if type(x) is Function:
-		return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(lj_repr, x.iTokens[1:])) + ' }';
+		return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(lj_repr, x.iTokens[1:])) + ' }'
 	if inspect.isfunction(x):
 		return 'function () { [native code] }'
 	assert False;
@@ -822,266 +831,269 @@ def run(tree, env, maxLoopTime=None, writer=None):
 		def setFuncCreationEnvs(expLi):
 			"Set the creation Env (crEnv) for all functions."
 			for elt in expLi:
-				if type(
-						elt) is Function and elt.crEnv == None:  # elt.crEnv may have been previously set due to the recursive
-					elt.crEnv = env;  # nature of eval().
-			return expLi;  # Not required, but all other functions return expLi.
+				if type(elt) is Function and elt.crEnv == None:  # elt.crEnv may have been previously set due to the recursive
+					elt.crEnv = env  # nature of eval().
+			return expLi  # Not required, but all other functions return expLi.
 
 		def subNames(expLi):
 			"Substitutes identifier names w/ their values."
 			# print 'entering subNames, expLi = ', expLi;
-			count = 0;  # counts { and }
+			count = 0  # counts { and }
 			for j in xrange(len(expLi)):
-				tok = expLi[j];
+				tok = expLi[j]
 				if tok is sym('{'):
-					count += 1;  # Keys in objects `{a: "apple"}` are NOT substituted
+					count += 1  # Keys in objects `{a: "apple"}` are NOT substituted
 				elif tok is sym('}'):
-					count -= 1;
+					count -= 1
 				elif type(tok) is Name and count == 0:
-					expLi[j] = env.lookup(tok);  # env was passed to eval
-			return expLi;
+					expLi[j] = env.lookup(tok)  # env was passed to eval
+			return expLi
 
 		def subObject(expLi, j):  # form:        ... { ... keyX : valueExpX , keyY : valueExpY ... }
 			"Substitutes an object literal w/ a py-dict."  # indices:         j                                             rc
 			# print 'entering subObject, expLi = ', expLi;
-			rc = gmb(expLi, j);
-			inner = expLi[j + 1: rc];
-			pairs = topSplit(inner, sym(','));
-			obj = {};
+			rc = gmb(expLi, j)
+			inner = expLi[j + 1: rc]
+			pairs = topSplit(inner, sym(','))
+			obj = {}
 			for pair in pairs:  # pair form:    keyA :   x + y + factorial ( 5 )
 				try:  # indices:        0  1   2 3 4 5     6     7 8 9
 					assert len(pair) >= 3;
-					key = pair[0];
+					key = pair[0]
 					if type(key) is Name: key = unicode(key);
 					assert type(key) is unicode;  # JS keys MUST be strings. Numbers & booleans are coerced to strings.
 					assert pair[1] is sym(':');
 				except AssertionError:
-					raise LJSyntaxErr('illegal object literal' + eMsgr(expLi));
-				valueLi = pair[2:];
-				obj[key] = eval(valueLi, env);
-			expLi = expLi[: j] + [obj] + expLi[rc + 1:];
-			return expLi;
+					raise LJSyntaxErr('illegal object literal' + eMsgr(expLi))
+				valueLi = pair[2:]
+				obj[key] = eval(valueLi, env)
+			expLi = expLi[: j] + [obj] + expLi[rc + 1:]
+			return expLi
 
 		def subArray(expLi, j):  # form:        ... [ 1 + 1 + 1 , expB , ... , expN ] ...
 			"Substitutes an array literal w/ a py-list."  # indices:        j                                rs
 			# print 'entering subArray, expLi = ', expLi;
-			rs = gmb(expLi, j);
-			inner = expLi[j + 1: rs];
-			expLists = topSplit(inner, sym(','));  # each expression is represented by a py-list of tokens
-			arr = [];
+			rs = gmb(expLi, j)
+			inner = expLi[j + 1: rs]
+			expLists = topSplit(inner, sym(','))  # each expression is represented by a py-list of tokens
+			arr = []
 			for eLi in expLists:
 				try:
 					assert len(eLi) >= 1;  # try-except used over `if` to maintain consistency.
 				except AssertionError:  # In the future, there may be more assertions.
-					raise LJSyntaxErr('illegal array literal');
-				arr.append(eval(eLi, env));
-			expLi = expLi[: j] + [arr] + expLi[rs + 1:];
-			return expLi;
+					raise LJSyntaxErr('illegal array literal')
+				arr.append(eval(eLi, env))
+			expLi = expLi[: j] + [arr] + expLi[rs + 1:]
+			return expLi
 
 		def subObjsAndArrs(expLi):
 			"Substitute literal objects and arrays."
 			# print 'entering sOA, expLi = ' + expLi;
-			j = 0;
+			j = 0
 			while j < len(expLi):
-				tok = expLi[j];
+				tok = expLi[j]
 				if tok is sym('{'):
-					expLi = subObject(expLi, j);
+					expLi = subObject(expLi, j)
 				elif tok is sym('['):
 					if j == 0:  # corner case (array literal)
-						expLi = subArray(expLi, j);
+						expLi = subArray(expLi, j)
 					else:
-						pok = expLi[j - 1];  # Previous tOK
-						indexyTypes = [dict, list, unicode];
-						pokIsIndexy = type(pok) in indexyTypes;
+						pok = expLi[j - 1]  # Previous tOK
+						# DMJ: unicode added
+						indexyTypes = [dict, list, str, unicode]
+						pokIsIndexy = type(pok) in indexyTypes
 						if pokIsIndexy or pok in [sym(']'), sym(')')]:
 							pass;  # indexing operation    # indexing operations are handeled by refine(..)
 						else:  # array literal
-							expLi = subArray(expLi, j);
+							expLi = subArray(expLi, j)
 				else:
 					pass;  # ignore other tokens
-				j += 1;  # even if expLi changes, incr j by 1
-			return expLi;
+				j += 1  # even if expLi changes, incr j by 1
+			return expLi
 
 		def refineObject(obj, key):
 			"Helps with object refinements."
 			if type(key) is not unicode:
-				raise LJTypeErr('object keys must be strings');
+				raise LJTypeErr('object keys must be strings')
 			if key not in obj:
-				raise LJKeyErr(key);
-			return obj[key];  # intermediate result
+				raise LJKeyErr(key)
+			return obj[key]  # intermediate result
 
 		def refineListy(li, ind):
 			"Helps with list and string refinements."
-			msg = 'array' if type(li) is list else 'string';
+			msg = 'array' if type(li) is list else 'string'
 			if type(ind) is not float:
-				raise LJTypeErr(msg + ' indices must be numbers ... ' + lj_repr(i));
+				raise LJTypeErr(msg + ' indices must be numbers ... ' + lj_repr(i))
 			elif ind < 0:
-				raise LJTypeErr(msg + ' indices must be non-negative ... ' + lj_repr(i));
+				raise LJTypeErr(msg + ' indices must be non-negative ... ' + lj_repr(i))
 			elif ind != round(ind):
-				raise LJTypeErr(msg + ' indices must integers ... ' + lj_repr(i));
+				raise LJTypeErr(msg + ' indices must integers ... ' + lj_repr(i))
 			elif ind >= len(li):
-				raise LJIndexErr(msg + ' index out of range ... ' + lj_repr(ind));
-			return li[int(ind)];  # intermediate result
+				raise LJIndexErr(msg + ' index out of range ... ' + lj_repr(ind))
+			return li[int(ind)]  # intermediate result
 
 		def refine(expLi, j):  # form:        ... <py-dict-or-list> [   10   ] ...
 			"Performs a refinement on object/array."  # indices:                          j        rs
 
 			# print 'entering refine, expLi = ', expLi;
 			def getRetExpLi(inter):
-				return expLi[:j - 1] + [inter] + expLi[rs + 1:];
+				return expLi[:j - 1] + [inter] + expLi[rs + 1:]
 
-			ob = expLi[j - 1];  # object, array or string
-			assert type(ob) in [dict, list, unicode];
-			rs = gmb(expLi, j);
+			ob = expLi[j - 1]  # object, array or string
+			# DMJ: unicode added
+			assert type(ob) in [dict, list, str, unicode]
+			rs = gmb(expLi, j)
 			if rs == j + 1:
-				raise LJSyntaxErr('illegal refinement');
-			inner = expLi[j + 1: rs];
-			ki = eval(inner, env);  # short for Key/Index
+				raise LJSyntaxErr('illegal refinement')
+			inner = expLi[j + 1: rs]
+			ki = eval(inner, env)  # short for Key/Index
 			if type(ob) is dict:
-				inter = refineObject(ob, ki);
-			else:  # ob in [list, unicode]: (see assert)
-				inter = refineListy(ob, ki);
-			return getRetExpLi(inter);
+				inter = refineObject(ob, ki)
+			else:  # ob in [list, str, unicode]: (see assert)
+				inter = refineListy(ob, ki)
+			return getRetExpLi(inter)
 
 		def invokeFunction(func, args):
 			"Helps invokes non-native functions."
 			if len(args) != len(func.params):
-				raise LJTypeErr('incorrect no. of arguments ... (%s)' % lj_repr(args)[1:-1]);
+				raise LJTypeErr('incorrect no. of arguments ... (%s)' % lj_repr(args)[1:-1])
 			if func.crEnv is None: raise Exception();  # internal error
 			assert func.crEnv is not None;
-			newEnv = func.crEnv.makeChild(func.params, args);  # A function is executed in its environ of creation
-			newEnv.setDepth(env.depth + 1);  # Depth of newEnv is changed to invocation_env's depth + 1
-			treeClone = cloneTree(func.tree);  # shields func.tree from being mutated
+			newEnv = func.crEnv.makeChild(func.params, args)  # A function is executed in its environ of creation
+			newEnv.setDepth(env.depth + 1)  # Depth of newEnv is changed to invocation_env's depth + 1
+			treeClone = cloneTree(func.tree)  # shields func.tree from being mutated
 			# print 'bodyClone = ', bodyClone, '\n';
 			try:
-				run(treeClone, newEnv, maxLoopTime, writer);
+				run(treeClone, newEnv, maxLoopTime, writer)
 				# print('about to exit invokeFunc...`try` block w/ no return');
 			except LJReturn as r:
 				# print('in except block of invokeFunc.. due to return, retval = %s' % r.args[0]);
-				inter = r.args[0];
-				return inter;  # intermediate result
-			raise LJTypeErr('non-returning function');
+				inter = r.args[0]
+				return inter  # intermediate result
+			raise LJTypeErr('non-returning function')
 
 		def invokePyFunction(func, args):
 			"Helps invoke python's function."
-			nParams = len(inspect.getargspec(func)[0]);  # number of parameters
+			nParams = len(inspect.getargspec(func)[0])  # number of parameters
 			if len(args) != nParams:
-				raise LJTypeErr('incorrect no. of arguments');
-			inter = func(*args);
-			types = [bool, float, unicode, list, dict, Function, type(None)];
+				raise LJTypeErr('incorrect no. of arguments')
+			inter = func(*args)
+			# DMJ: unicode added
+			types = [bool, float, str, unicode, list, dict, Function, type(None)]
 			if type(inter) in types or inspect.isfunction(inter):
-				return inter;  # intermediate result
+				return inter  # intermediate result
 			# print func;
-			raise Exception('non-returning native function');
+			raise Exception('non-returning native function')
 
 		def invoke(expLi, j):  # form:        ... <Function> ( 1, "king", ... , [0] ) ...
 			"Helps perform function calls."  # indices:                    j                      rp
 
 			# print 'entering invoke, expLi = ', expLi;
 			def getRetExpLi(inter):
-				return expLi[:j - 1] + [inter] + expLi[rp + 1:];
+				return expLi[:j - 1] + [inter] + expLi[rp + 1:]
 
-			func = expLi[j - 1];
-			assert type(func) is Function or inspect.isfunction(func);
-			rp = gmb(expLi, j);
-			inner = expLi[j + 1: rp];
-			augInner = [sym('[')] + inner + [sym(']')];
-			args = subArray(augInner, 0)[
-				0];  # subArray returns an expLi. Here, the returned expLi will contain a single list
+			func = expLi[j - 1]
+			assert type(func) is Function or inspect.isfunction(func)
+			rp = gmb(expLi, j)
+			inner = expLi[j + 1: rp]
+			augInner = [sym('[')] + inner + [sym(']')]
+			args = subArray(augInner, 0)[0]  # subArray returns an expLi. Here, the returned expLi will contain a single list
 			if type(func) is Function:
-				inter = invokeFunction(func, args);
+				inter = invokeFunction(func, args)
 			else:  # pythonic function
-				inter = invokePyFunction(func, args);
-			return getRetExpLi(inter);
+				inter = invokePyFunction(func, args)
+			return getRetExpLi(inter)
 
 		def solveGroup(expLi, j):  # form:        ... ( a + b ) ...
 			"Helps with parentheses based grouping."  # indices:         j
 			# print 'entering solveGroup, expLi = ', expLi;
-			rp = gmb(expLi, j);
-			inner = expLi[j + 1: rp];
-			gVal = eval(inner, env);  # Grouping's Value
-			expLi = expLi[: j] + [gVal] + expLi[rp + 1:];
-			return expLi;
+			rp = gmb(expLi, j)
+			inner = expLi[j + 1: rp]
+			gVal = eval(inner, env)  # Grouping's Value
+			expLi = expLi[: j] + [gVal] + expLi[rp + 1:]
+			return expLi
 
 		def refine_invoke_and_group(expLi):
 			"Performs refinements and invocations."
 			# print 'entering r_i_and_g, expLi = ', expLi;
-			entered = cloneLi(expLi);
-			j = 0;
+			entered = cloneLi(expLi)
+			j = 0
 
 			def isFunction(x):
-				return type(x) is Function or inspect.isfunction(x);
+				return type(x) is Function or inspect.isfunction(x)
 
 			while j < len(expLi):
-				tok = expLi[j];
+				tok = expLi[j]
 				if tok is sym('['):
-					expLi = refine(expLi, j);
+					expLi = refine(expLi, j)
 					# j = j;         # no increment
 				elif tok is sym('(') and j == 0:  # corner case
-					expLi = solveGroup(expLi, j);
-					j += 1;
+					expLi = solveGroup(expLi, j)
+					j += 1
 				elif tok is sym('('):
-					prev = expLi[j - 1];
+					prev = expLi[j - 1]
 					if isFunction(prev):
-						expLi = invoke(expLi, j);
+						expLi = invoke(expLi, j)
 						# j = j;    # no increment
 					else:
-						expLi = solveGroup(expLi, j);
-						j += 1;
+						expLi = solveGroup(expLi, j)
+						j += 1
 				else:
-					j += 1;  # ignore other tokens
+					j += 1  # ignore other tokens
 			if expLi == [['a', 'c', 'b'], [0.0]]:
 				pass;
 				# print 'entering rig expLi = ', entered;
 				# print 'leaving  rig expLi = ', expLi;
-			return expLi;
+			return expLi
 
 		def unop(expLi, op, j):  # form:        ... op value ...
 			"Evaluates a single unary expression like !true."  # indices:         j
 			# print 'entering unop, expLi = ', expLi;
 			try:
-				valExpLi = [expLi[j + 1]];
+				valExpLi = [expLi[j + 1]]
 			except ValueError:
-				raise LJSyntaxErr('unexpected unary operator' + op);
+				raise LJSyntaxErr('unexpected unary operator' + op)
 			if op is sym('!'):
-				inter = not isTruthy(eval(valExpLi, env));
-				expLi = expLi[: j] + [inter] + expLi[j + 2:];
+				inter = not isTruthy(eval(valExpLi, env))
+				expLi = expLi[: j] + [inter] + expLi[j + 2:]
 			elif op is sym('-'):
-				inter = eval(valExpLi, env);
+				inter = eval(valExpLi, env)
 				if type(inter) is not float:
-					raise LJTypeErr('bad operand for unary -');
-				expLi = expLi[: j] + [-inter] + expLi[j + 2:];
+					raise LJTypeErr('bad operand for unary -')
+				expLi = expLi[: j] + [-inter] + expLi[j + 2:]
 			elif op is sym('+'):
-				inter = eval(valExpLi, env);
-				if type(inter) in [unicode, float]:
+				inter = eval(valExpLi, env)
+				# DMJ: unicode
+				if type(inter) in [str, unicode, float]:
 					try:
-						interF = float(inter);  # Note: `isDecimal` is not useful here.
+						interF = float(inter)  # Note: `isDecimal` is not useful here.
 					except ValueError:
-						raise LJTypeErr('bad operand for unary +');
+						raise LJTypeErr('bad operand for unary +')
 				else:
-					raise LJTypeErr('bad operand for unary +');
-				expLi = expLi[: j] + [interF] + expLi[j + 2:];
-			return expLi;
+					raise LJTypeErr('bad operand for unary +')
+				expLi = expLi[: j] + [interF] + expLi[j + 2:]
+			return expLi
 
 		def indiBinop(a, op, b):
 			"Helps binop(..) with type-independent operators."
 			# print 'entering indiBinop, expLi = ', expLi;
-			isT = isTruthy;  # Note: JS and python have different ideas of falsehood
+			isT = isTruthy  # Note: JS and python have different ideas of falsehood
 
 			def eqeqeq(x, y):  # Note: In python, `1.0 is 1.0` --> True
 				if type(x) != type(y): return False;  # But, `a = 1.0; b = 1.0; a is b` --> False
-				if type(y) in [bool, float, unicode, type(None)]:  # Thus `is` in py is NOT the same as `===` in JS
-					return x == y;
-				refTypes = [list, dict, Function];
+				# DMJ: unicode added
+				if type(y) in [bool, float, str, unicode, type(None)]:  # Thus `is` in py is NOT the same as `===` in JS
+					return x == y
+				refTypes = [list, dict, Function]
 				assert type(y) in refTypes or inspect.isfunction(y);
-				return x is y;
+				return x is y
 
 			return {  # pythonic switch statement
 				sym('==='): eqeqeq,
 				sym('!=='): lambda x, y: not eqeqeq(x, y),
 				sym('&&'): lambda x, y: y if isT(x) else x,
 				sym('||'): lambda x, y: x if isT(x) else y  # ,
-			}[op](a, b);
+			}[op](a, b)
 
 		def strNumBinop(a, op, b):
 			"Helps binop(..) with string and number operations."
@@ -1092,7 +1104,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
 				sym('>'): lambda x, y: x > y,
 				sym('<'): lambda x, y: x < y,
 				sym('+'): lambda x, y: x + y,
-			}[op](a, b);
+			}[op](a, b)
 
 		def numBinop(a, op, b):
 			"Helps binop(..) with number operations."
@@ -1102,19 +1114,19 @@ def run(tree, env, maxLoopTime=None, writer=None):
 				sym('/'): lambda x, y: x / y,
 				sym('%'): lambda x, y: x % y,  # Note: `+` is dealt with in strNumBinop
 				sym('-'): lambda x, y: x - y  # ,
-			}[op](a, b);
+			}[op](a, b)
 
 		def checkChaining(expLi, op, j):  # On Chromium,
-			nonAsso = map(sym, '> < >= <= === !=='.split());  # 1 === 1 === 1    -->        false
+			nonAsso = map(sym, '> < >= <= === !=='.split())  # 1 === 1 === 1    -->        false
 			if j + 2 >= len(expLi): return;  # because,
-			op2 = expLi[j + 2];  # 1 === 1          -->        true
-			rawMsg = 'operators %s and %s cannot be chained';  # true === 1         -->        false
+			op2 = expLi[j + 2]  # 1 === 1          -->        true
+			rawMsg = 'operators %s and %s cannot be chained'  # true === 1         -->        false
 			if op in nonAsso and op2 in nonAsso:  # Also,
-				op2 = expLi[j + 2];  # 1 > 1 < 1        -->        true
-				msg = rawMsg % (op, op2);  # because,
+				op2 = expLi[j + 2]  # 1 > 1 < 1        -->        true
+				msg = rawMsg % (op, op2)  # because,
 				if op == op2:  # 1 > 1            -->        false
-					msg = 'operator %s cannot be chained' % op;  # false < 1        -->        true
-				raise LJSyntaxErr(msg);  #
+					msg = 'operator %s cannot be chained' % op  # false < 1        -->        true
+				raise LJSyntaxErr(msg)  #
 			else:
 				pass;  # We shall not be a part of this madness!!
 
@@ -1123,55 +1135,56 @@ def run(tree, env, maxLoopTime=None, writer=None):
 
 			# print 'entering binop, expLi = ', expLi;
 			def getRetExpLi(inter):
-				return expLi[: j - 1] + [inter] + expLi[j + 2:];
+				return expLi[: j - 1] + [inter] + expLi[j + 2:]
 				j
 
 			try:
 				assert j > 0;
-				a = expLi[j - 1];  # first operand
-				b = expLi[j + 1];  # second operand
+				a = expLi[j - 1]  # first operand
+				b = expLi[j + 1]  # second operand
 			except (AssertionError, IndexError):
-				raise LJSyntaxErr('unexpected operator ' + op);
-			checkChaining(expLi, op, j);
-			indiOps = map(sym, '=== !== && ||'.split());
+				raise LJSyntaxErr('unexpected operator ' + op)
+			checkChaining(expLi, op, j)
+			indiOps = map(sym, '=== !== && ||'.split())
 			if op in indiOps:
-				inter = indiBinop(a, op, b);
-				return getRetExpLi(inter);
+				inter = indiBinop(a, op, b)
+				return getRetExpLi(inter)
 			# otherwise...
-			if type(a) == type(b) and type(b) in [unicode, float]:
-				strNumOps = map(sym, '>= <= > < +'.split());
+			# DMJ: unicode
+			if type(a) == type(b) and type(b) in [str, unicode, float]:
+				strNumOps = map(sym, '>= <= > < +'.split())
 				if op in strNumOps:
-					inter = strNumBinop(a, op, b);
-					return getRetExpLi(inter);
+					inter = strNumBinop(a, op, b)
+					return getRetExpLi(inter)
 				elif type(b) is float:
-					numOps = map(sym, list('*/%-'));
+					numOps = map(sym, list('*/%-'))
 					assert op in numOps;
-					inter = numBinop(a, op, b);
-					return getRetExpLi(inter);
-			raise LJTypeErr('bad operands for binary ' + op + eMsgr(expLi));
+					inter = numBinop(a, op, b)
+					return getRetExpLi(inter)
+			raise LJTypeErr('bad operands for binary ' + op + eMsgr(expLi))
 
 		def allUnary(expLi):
 			"Evaluates all unary expressions in expLi."
 			# UNARY (right to left)
-			j = len(expLi) - 1;
+			j = len(expLi) - 1
 			while j >= 0:
 				if expLi[j] is sym('!'):
-					expLi = unop(expLi, sym('!'), j);
+					expLi = unop(expLi, sym('!'), j)
 				elif expLi[j] is sym('-'):
 					if j == 0 or type(expLi[j - 1]) != float:
-						expLi = unop(expLi, sym('-'), j);
+						expLi = unop(expLi, sym('-'), j)
 					else:
 						pass;  # binary subtraction
 				elif expLi[j] is sym('+'):
-					# if j == 0 or type(expLi[j - 1]) not in [float, unicode]:
+					# if j == 0 or type(expLi[j - 1]) not in [float, str, unicode]:
 					if j == 0 or type(expLi[j - 1]) is Symbol:
-						expLi = unop(expLi, sym('+'), j);
+						expLi = unop(expLi, sym('+'), j)
 					else:
 						pass;  # binary addition
 				else:
 					pass;  # ignore token
-				j -= 1;
-			return expLi;
+				j -= 1
+			return expLi
 
 		def allBinary(expLi):
 			"Evaluates all binary expressions in expLi."
@@ -1183,142 +1196,144 @@ def run(tree, env, maxLoopTime=None, writer=None):
 				[sym('==='), sym('!==')],  # s = S('king');
 				[sym('&&')],  # s == 'king'; # ==> True
 				[sym('||')]  # ,
-			];
+			]
 			for level in precedence:
 				# print expLi, level;
-				j = 0;
+				j = 0
 				while j < len(expLi):
 					if expLi[j] in level and type(expLi[j]) is Symbol:
-						expLi = binop(expLi, expLi[j], j);
+						expLi = binop(expLi, expLi[j], j)
 						# j = j; do not increment!!
 					else:
-						j += 1;
+						j += 1
 				if len(expLi) == 1: break;
-			return expLi;
+			return expLi
 
 		def simpleEval(expLi):  # TODO: remove this function.
 			"Evaluates unary and binary operations."
-			return (allBinary(allUnary(expLi)));
+			return (allBinary(allUnary(expLi)))
 
 		# - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		None;  # print 'incomming expLi = ', expLi, '\n';
-		expLi = setFuncCreationEnvs(expLi);
-		expLi = subNames(expLi);  # print'leaving subNames, expLi = ', expLi, '\n';
-		expLi = subObjsAndArrs(expLi);  # print'leaving subObjsAndArrs, expLi = ', expLi, '\n';
-		expLi = refine_invoke_and_group(expLi);  # print'leaving r_i_and_g, expLi = ', expLi, '\n';
-		expLi = simpleEval(expLi);  # print'leaving simpleEval, expLi = ', expLi, '\n';
-		oldLen = len(expLi);  # print 'oldLen (first) = ', oldLen, '\n';
+		#None  # print 'incomming expLi = ', expLi, '\n';
+		expLi = setFuncCreationEnvs(expLi)
+		expLi = subNames(expLi)  # print'leaving subNames, expLi = ', expLi, '\n';
+		expLi = subObjsAndArrs(expLi)  # print'leaving subObjsAndArrs, expLi = ', expLi, '\n';
+		expLi = refine_invoke_and_group(expLi)  # print'leaving r_i_and_g, expLi = ', expLi, '\n';
+		expLi = simpleEval(expLi)  # print'leaving simpleEval, expLi = ', expLi, '\n';
+		oldLen = len(expLi)  # print 'oldLen (first) = ', oldLen, '\n';
 		while len(expLi) != 1:
-			expLi = simpleEval(expLi);
-			newLen = len(expLi);
+			expLi = simpleEval(expLi)
+			newLen = len(expLi)
 			if oldLen > newLen:
-				oldLen = newLen;
+				oldLen = newLen
 			else:
-				errStr = ' '.join(map(unicode, expLi));
-				raise LJErr('illegal expression' + eMsgr(expLi));
+				errStr = ' '.join(map(str, expLi)) # DMJ: unicode?
+				raise LJErr('illegal expression' + eMsgr(expLi))
 		# having finished looping...
-		ans = expLi[0];
-		LJTypes = [bool, float, unicode, list, dict, Function, type(None)];
+		ans = expLi[0]
+		# DMJ: unicode added
+		LJTypes = [bool, float, str, unicode, list, dict, Function, type(None)]
 		if not (type(ans) in LJTypes or inspect.isfunction(ans)):
-			raise LJTypeErr('illegal expression (of unknown type)');
-		return ans;  # end eval(..)
+			raise LJTypeErr('illegal expression (of unknown type): `{type}`'.format(type=type(ans)))
+		return ans  # end eval(..)
 
 	# *********************************************
 	def runInit(stmt, env):
 		"Helps exec an init `var a = 10;` statement."
-		[_, name, expLi] = stmt;
+		[_, name, expLi] = stmt
 		# print 'pre init ', stmt, ' env = ', env.show();
-		env.init(name, eval(expLi, env));
+		env.init(name, eval(expLi, env))
 		# print 'post init ', stmt, ' env = ', env.show();
 
 	def runIfLadder(stmt, env):
 		"Helps run through an if-ladder."
 		for j in xrange(1, len(stmt), 2):
-			expLi, code = stmt[j], stmt[j + 1];
+			expLi, code = stmt[j], stmt[j + 1]
 			if isTruthy(eval(expLi, env)):
-				run(code, env, maxLoopTime, writer);
-				break;
+				run(code, env, maxLoopTime, writer)
+				break
 
 	def runWhile(stmt, env):
 		"Helps run a while loop."
-		[_, expLi, code] = stmt;
+		[_, expLi, code] = stmt
 		# print 'while cond = ', expLi, ' & env = ', env.show();
-		t1 = time.time();
+		t1 = time.time()
 		while isTruthy(eval(expLi[:], env)):  # expLi[:] is eqvt. to cloneLi(expLi) as expLi is flat (non-nested).
 			try:
-				run(cloneLi(code), env, maxLoopTime, writer);  # Cloning shields while's code-block from mutation
+				run(cloneLi(code), env, maxLoopTime, writer)  # Cloning shields while's code-block from mutation
 			except LJBreak:
-				break;
+				break
 			if maxLoopTime and time.time() - t1 > maxLoopTime:
-				raise LJRuntimeErr('looping for to long');
+				raise LJRuntimeErr('looping for to long')
 
 	def runReturn(stmt, env):
 		"Emulates return statement."
-		[_, expLi] = stmt;
+		[_, expLi] = stmt
 		# tmp = eval(expLi, env);
 		# print ('runReturn... returning ...' + unicode(tmp));
-		raise LJReturn(eval(expLi, env));
+		raise LJReturn(eval(expLi, env))
 
 	def runNameAssign(stmt, env):
 		"Helps runAssign(..) in executing simple assignments."
 		# print 'nameAssign, ', stmt;
-		[_, [name], rExpLi] = stmt;
-		env.assign(name, eval(rExpLi, env));
+		[_, [name], rExpLi] = stmt
+		env.assign(name, eval(rExpLi, env))
 
 	def runObjArrAssign(stmt, env):
 		"Helps runAssign(..) w/ assignments to object keys."
 		[_, lExpLi, rExpLi] = stmt
-		rhsExp = eval(rExpLi, env);
-		ls = gmob(lExpLi, -1);  # Last Square Bracket  # form of lExpLi:     a [ "foo" ]  [  1  ] ..  [      0       ]
-		part1 = lExpLi[: ls];  # indices:            0                        ls            -1
+		rhsExp = eval(rExpLi, env)
+		ls = gmob(lExpLi, -1)  # Last Square Bracket  # form of lExpLi:     a [ "foo" ]  [  1  ] ..  [      0       ]
+		part1 = lExpLi[: ls]  # indices:            0                        ls            -1
 		part2 = lExpLi[ls + 1: -1]  # parts:              <--------part1--------->   <---part2--->
-		objarr = eval(part1, env);  # obj or arr
-		innexp = eval(part2, env);  # inner exp
-		if [type(objarr), type(innexp)] == [dict, unicode]:
-			objarr[innexp] = rhsExp;
+		objarr = eval(part1, env)  # obj or arr
+		innexp = eval(part2, env)  # inner exp
+		# DMJ: unicode
+		if [type(objarr), type(innexp)] == [dict, str, unicode]:
+			objarr[innexp] = rhsExp
 		elif [type(objarr), type(innexp)] == [list, float]:
-			eval(lExpLi, env);  # checks range and roundness
-			objarr[int(innexp)] = rhsExp;
+			eval(lExpLi, env)  # checks range and roundness
+			objarr[int(innexp)] = rhsExp
 		else:  # Note: strings are immutable
-			raise LJTypeErr('illegal LHS in assignment' + eMsgr(stmt));
+			raise LJTypeErr('illegal LHS in assignment' + eMsgr(stmt))
 
 	def runAssign(stmt, env):
 		"Helps exec variable assignment."
-		[_, lExpLi, _] = stmt;
+		[_, lExpLi, _] = stmt
 		# print 'pre runAssign, ', stmt, ' env = ', env.show();
 		if len(lExpLi) == 1:
-			runNameAssign(stmt, env);
+			runNameAssign(stmt, env)
 		else:
-			runObjArrAssign(stmt, env);
+			runObjArrAssign(stmt, env)
 			# print 'pre runAssign, ', stmt, ' env = ', env.show();
 
 	def runExpStmt(stmt, env):
 		'Helps eval exp-stmts like `writeln("Hi!");`'
-		[_, expLi] = stmt;
-		ans = eval(expLi, env);
+		[_, expLi] = stmt
+		ans = eval(expLi, env)
 		if writer and ans != None and env.isGlobal:
-			writer(lj_repr(ans) + '\n');
-		return ans;
+			writer(lj_repr(ans) + '\n')
+		return ans
 
 	# -------------------------------------------------------
 
 	for stmt in tree:
 		# print 'tree-stmt = ', stmt;
 		if stmt[0] == 'init':
-			runInit(stmt, env);
+			runInit(stmt, env)
 		elif stmt[0] == 'if-ladder':
-			runIfLadder(stmt, env);
+			runIfLadder(stmt, env)
 		elif stmt[0] == 'while':
-			runWhile(stmt, env);
+			runWhile(stmt, env)
 		elif stmt[0] == 'return':
-			runReturn(stmt, env);
+			runReturn(stmt, env)
 		elif stmt[0] == 'break':
-			raise LJBreak();  # too simple for a function
+			raise LJBreak()  # too simple for a function
 		elif stmt[0] == 'assign':
-			runAssign(stmt, env);
+			runAssign(stmt, env)
 		elif stmt[0] == 'exp-stmt':
-			runExpStmt(stmt, env);
+			runExpStmt(stmt, env)
 
 
 #############################################################
@@ -1328,91 +1343,97 @@ def inbuilts(writer):
 	# n_ in the following functions/variables indicates NATIVE
 	def n_str(x):
 		"Returns the string form of input."
-		if type(x) is unicode: return x;
-		return lj_repr(x);
+		# DMJ: unicode
+		if type(x) in [str, unicode]: return x;
+		return lj_repr(x)
 
 	def n_print(x):
 		"Default output function."
 		if writer:
-			writer(n_str(x) + '\n');
+			writer(n_str(x) + '\n')
 		else:
-			raise LJReferenceErr('print is not defined');
-		return None;  # null
+			raise LJReferenceErr('print is not defined')
+		return None  # null
 
 	def n_type(x):
 		"Returns the string name of LJ type."
 		if inspect.isfunction(x): return 'function';
+		# DMJ: unicode
 		return {  # pythonic switch
 			bool: 'boolean', float: 'number',
-			unicode: 'string', list: 'array',
+			str: 'string', unicode: 'string',
+			list: 'array',
 			dict: 'object', Function: 'function',
 			type(None): 'null'  # ,
-		}[type(x)];
+		}[type(x)]
 
 	def n_len(x):
 		"Returns length of LJ strings, arrays and objects."
-		if type(x) in [unicode, list, dict]: return float(len(x));
-		raise LJTypeErr('%s has no len(): %s' % (n_type(x), x));
+		# DMJ: unicode
+		if type(x) in [str, unicode, list, dict]: return float(len(x));
+		raise LJTypeErr('%s has no len(): %s' % (n_type(x), x))
 
 	def n_keys(dicty):
 		"Returns an array of keys in an object `obj`."
 		if type(dicty) is dict: return dicty.keys();
-		raise LJTypeErr('%s has no keys()' % n_type(dicty));
+		raise LJTypeErr('%s has no keys()' % n_type(dicty))
 
 	def n_del(x, y):
 		"Deletes from an object or array."
-		if [type(x), type(y)] == [dict, unicode]:
+		# DMJ: unicode
+		if [type(x), type(y)] == [dict, str, unicode]:
 			if y in x:
-				x.pop(y);
-				return True;
-			raise LJKeyErr('del() called with non-existent key');
+				x.pop(y)
+				return True
+			raise LJKeyErr('del() called with non-existent key')
 		if [type(x), type(y)] == [list, float]:
 			if y == round(y) and 0 <= y < len(x):
-				x.pop(int(y));
-				return True;
-			raise LJIndexErr('invalid array index passed to del()');
-		raise LJTypeErr('bad call to del()');
+				x.pop(int(y))
+				return True
+			raise LJIndexErr('invalid array index passed to del()')
+		raise LJTypeErr('bad call to del()')
 
 	def n_append(li, elt):
 		if type(li) is list:
-			li.append(elt);
+			li.append(elt)
 		else:
-			raise LJTypeErr('cannot append() to non-array');
-		return float(len(li));
+			raise LJTypeErr('cannot append() to non-array')
+		return float(len(li))
 
 	def n_assert(exp, msg):
 		"Python-like assert via assert(). Replaces `throw`."
 		if isTruthy(exp): return None;  # null
-		raise LJAssertionErr(n_str(msg));
+		raise LJAssertionErr(n_str(msg))
 
 	def n_ord(c):
-		if type(c) is unicode and len(c) == 1: return float(ord(c));
-		raise LJTypeErr('non-character supplied to ord()');
+		# DMJ: unicode
+		if type(c) in [str, unicode] and len(c) == 1: return float(ord(c));
+		raise LJTypeErr('non-character supplied to ord()')
 
 	def n_chr(i):
 		if not (type(i) is float and i == round(i)):
-			raise LJTypeErr('chr() requires an integer');
+			raise LJTypeErr('chr() requires an integer')
 		if not (i < 256):
-			raise LJErr('chr() arg not less than 256');
-		return chr(int(i));
+			raise LJErr('chr() arg not less than 256')
+		return chr(int(i))
 
 	def isF(*args):
 		"Helps f() check that each argument passed is float."
 		if all(type(n) is float for n in args):
-			return True;
-		raise LJTypeErr('methods of math accept numbers only');
+			return True
+		raise LJTypeErr('methods of math accept numbers only')
 
 	def fm(func, n):  # fm <--> Function Math
 		"Creates a mathy function that calls `func` with `n` args."
 		if n == 0:
-			return lambda: func();  # Creating a lambda is required, as all native functions must
+			return lambda: func()  # Creating a lambda is required, as all native functions must
 		if n == 1:  # be USER DEFINED.
-			return lambda x: func(x) if isF(x) else None;  # Thus, we may return `lambda x: abs(x)` but not `abs`;
+			return lambda x: func(x) if isF(x) else None  # Thus, we may return `lambda x: abs(x)` but not `abs`;
 		if n == 2:
-			return lambda x, y: func(x, y) if isF(x, y) else None;
-		raise Exception();  # internal error
+			return lambda x, y: func(x, y) if isF(x, y) else None
+		raise Exception()   # internal error
 
-	e = math.e;
+	e = math.e
 	n_math = {
 		'E': e, 'PI': math.pi, 'LN10': math.log(10.0, e),
 		'LN2': math.log(2.0, e), 'LOG2E': math.log(e, 2.0),
@@ -1428,34 +1449,35 @@ def inbuilts(writer):
 		'pow': fm(pow, 2), 'random': fm(random.random, 0),
 		'round': fm(round, 1), 'sin': fm(math.sin, 1),
 		'sqrt': fm(math.sqrt, 1), 'tan': fm(math.tan, 1)  # ,
-	};
+	}
 
-	loDict = locals();
-	output = {};
+	loDict = locals()
+	output = {}
 	if not writer:
-		loDict.pop('n_write');
-		loDict.pop('n_writeln');
+		loDict.pop('n_write')
+		loDict.pop('n_writeln')
 	for key in loDict:
 		if key.startswith('n_'):
-			name = Name(key[2:]);  # shave off 'n_'
-			output[name] = loDict[key];
-	return output;
+			name = Name(key[2:])  # shave off 'n_'
+			output[name] = loDict[key]
+	return output
 
 
 def addNatives(env, dicty):
 	"Adds to the environment env."
-	okTypes = [bool, float, unicode, list, dict, Function, type(None)]  # py-function excluded
+	# DMJ: unicode
+	okTypes = [bool, float, str, unicode, list, dict, Function, type(None)]  # py-function excluded
 	for key in dicty:
-		name = Name(key);
+		name = Name(key)
 		if name in env:
-			sys.stdout.write('WARNING!! Conflicting native name ' + name);
+			sys.stdout.write('WARNING!! Conflicting native name ' + name)
 		# otherwise...
 		if inspect.isfunction(dicty[key]):
-			env[name] = dicty[key];
+			env[name] = dicty[key]
 		elif type(dicty[key]) in okTypes:
-			env[name] = dicty[key];
+			env[name] = dicty[key]
 		else:
-			raise Exception('illegal native ' + key);
+			raise Exception('illegal native ' + key)
 
 
 #############################################################
@@ -1484,7 +1506,8 @@ class Runtime(object):
 			elif type(prog) is str and prog.endswith('.l.js'):
 				with io.open(prog, mode="r", encoding="utf-8") as f:
 					tree = yacc(lex(f.read()))
-			elif type(prog) is unicode:
+			# DMJ: unicode
+			elif type(prog) in [str, unicode]:
 				tree = yacc(lex(prog))
 			else:
 				raise TypeError('bad input to Runtime.run()')
