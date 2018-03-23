@@ -406,14 +406,14 @@ def yacc(tokens):
 				break
 		return expLi
 
-	def parseVar(tokens, j):  # form:        ... var a = 10 , b = 20 ; ...
-		"Helps yacc() in parsing var statements."  # indices:         j                   semiPos
+	def parseVar(tokens, j):                               # form:        ... var a = 10 , b = 20 ; ...
+		"Helps yacc() in parsing var statements."          # indices:         j                   semiPos
 		if j == 0 or tokens[j - 1] != sym('var?'):
-			raise LJSyntaxErr('unexpected var statement')  # In JS, var statements may occur anywhere.
-		semiPos = topIndex(tokens, j, sym(';'))  # This may create an illusion of block-scope, which JS lacks.
-		subtokens = tokens[j + 1: semiPos]  # As a remedy, Jispy allows at most one var statement per scope,
-		inits = topSplit(subtokens, sym(','))  # and, if used, it must be the very first statement in the scope.
-		for init in inits:  # The uninterned symbol `var?` is used to restrict var statements.
+			raise LJSyntaxErr('unexpected var statement: %s' % ''.join([ str(t) for t in tokens[max(0, j-5):j] ]))  # In JS, var statements may occur anywhere.
+		semiPos = topIndex(tokens, j, sym(';'))            # This may create an illusion of block-scope, which JS lacks.
+		subtokens = tokens[j + 1: semiPos]                 # As a remedy, Jispy allows at most one var statement per scope,
+		inits = topSplit(subtokens, sym(','))              # and, if used, it must be the very first statement in the scope.
+		for init in inits:                                 # The uninterned symbol `var?` is used to restrict var statements.
 			try:
 				assert len(init) >= 3;  # eg. init:     a  =  10  +  10
 				assert type(init[0]) is Name;  # indices:   0  1  2   3  4
@@ -733,14 +733,14 @@ def makeEnvClass(maxDepth=None):  # maxDepth is private
 				return self
 			elif not self.isGlobal:
 				return self.parent.getEnv(key)
-			raise LJReferenceErr('%s is not defined' % key)
+			raise LJReferenceErr('`%s` is not defined' % key)
 
 		def init(self, key, value):
 			"Initializes a variable in the currect environment."
 			if key not in self:
 				self[key] = value
 			else:
-				raise LJReferenceErr('%s is already defined' % key)
+				raise LJReferenceErr('`%s` is already defined in this environment!' % key)
 
 		def assign(self, key, value):
 			"Resets the value of a variable in its own environment."
@@ -792,6 +792,8 @@ def lj_repr(x):
 			return str(x)
 	if type(x) is str:
 		return '"' + x.replace('"', '\\"') + '"'
+	if type(x) is unicode:
+		return 'u"' + x.replace('"', '\\"') + '"'
 	if type(x) in [Name, Symbol]: return x
 	if type(x) is list:
 		if not x: return '[]'  # corner case (see shaving)
@@ -809,7 +811,7 @@ def lj_repr(x):
 		return 'function (' + ', '.join(x.params) + ') { ' + ' '.join(map(lj_repr, x.iTokens[1:])) + ' }'
 	if inspect.isfunction(x):
 		return 'function () { [native code] }'
-	assert False;
+	assert False
 
 
 #############################################################
@@ -972,11 +974,11 @@ def run(tree, env, maxLoopTime=None, writer=None):
 			# if len(args) != nParams:
 			#    raise LJTypeErr('incorrect no. of arguments');
 			inter = func(*args)
-			types = [bool, float, str, list, dict, Function, type(None)]
+			types = [bool, float, str, unicode, list, dict, Function, type(None)]
 			if type(inter) in types or inspect.isfunction(inter):
 				return inter  # intermediate result
 			# print func;
-			raise Exception('non-returning native function')
+			raise Exception('non-returning native function %s (%s)' % (str(func), args))
 
 		def invoke(expLi, j):  # form:        ... <Function> ( 1, "king", ... , [0] ) ...
 			"Helps perform function calls."  # indices:                    j                      rp
@@ -1207,13 +1209,13 @@ def run(tree, env, maxLoopTime=None, writer=None):
 
 		# - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-		#None  # print 'incomming expLi = ', expLi, '\n';
+		#None                                  # print 'incomming expLi = ', expLi, '\n';
 		expLi = setFuncCreationEnvs(expLi)
-		expLi = subNames(expLi)  # print'leaving subNames, expLi = ', expLi, '\n';
-		expLi = subObjsAndArrs(expLi)  # print'leaving subObjsAndArrs, expLi = ', expLi, '\n';
-		expLi = refine_invoke_and_group(expLi)  # print'leaving r_i_and_g, expLi = ', expLi, '\n';
-		expLi = simpleEval(expLi)  # print'leaving simpleEval, expLi = ', expLi, '\n';
-		oldLen = len(expLi)  # print 'oldLen (first) = ', oldLen, '\n';
+		expLi = subNames(expLi)                # print'leaving subNames, expLi = ', expLi, '\n';
+		expLi = subObjsAndArrs(expLi)          # print'leaving subObjsAndArrs, expLi = ', expLi, '\n';
+		expLi = refine_invoke_and_group(expLi) # print'leaving r_i_and_g, expLi = ', expLi, '\n';
+		expLi = simpleEval(expLi)              # print'leaving simpleEval, expLi = ', expLi, '\n';
+		oldLen = len(expLi)                    # print 'oldLen (first) = ', oldLen, '\n';
 		while len(expLi) != 1:
 			expLi = simpleEval(expLi)
 			newLen = len(expLi)
@@ -1224,9 +1226,9 @@ def run(tree, env, maxLoopTime=None, writer=None):
 				raise LJErr('illegal expression' + eMsgr(expLi))
 		# having finished looping...
 		ans = expLi[0]
-		LJTypes = [bool, float, str, list, dict, Function, type(None)]
+		LJTypes = [bool, float, str, unicode, list, dict, Function, type(None)]
 		if not (type(ans) in LJTypes or inspect.isfunction(ans)):
-			raise LJTypeErr('illegal expression (of unknown type)')
+			raise LJTypeErr('illegal expression (of unknown type `%s`)' % str(type(ans)))
 		return ans  # end eval(..)
 
 	# *********************************************
