@@ -12,7 +12,7 @@
 #                                                                           #
 #############################################################################
 
-from jispy import lex, yacc, Runtime;
+from jispy import lex, yacc, Runtime
 
 tests = [
     '''    // Test-0: testing for loop (factorial)
@@ -53,6 +53,7 @@ tests = [
         while (i < len(arr)) {
             if (type(arr[i]) !== expected[i]) {
                 flag = false;
+                //print('false - '+str(arr[i])+' is not '+ expected[i]);
                 break;
             }
             i = i + 1;
@@ -452,16 +453,16 @@ tests = [
         
         print (add1(1) === 2 && add100(100) === 200);
     ''',
-];
+]
 
-j = -1;
+j = -1
 for prog in tests:
-    j += 1;
+    j += 1
     print str(j) + '. ',
     #print 'test     -->\n', t, '\n';
-    tokens = lex(prog);
+    tokens = lex(prog)
     #print 'tokens   -->\n', tokens, '\n';
-    tree = yacc(tokens);
+    tree = yacc(tokens)
     #print 'tree     -->\n', tree, '\n';
-    rt = Runtime(maxLoopTime=13, maxDepth=100);
-    rt.run(tree);
+    rt = Runtime(maxLoopTime=13, maxDepth=100)
+    rt.run(tree)
