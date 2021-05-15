@@ -53,7 +53,6 @@ export extends finally import in instanceof let new super
 switch this throw try typeof void with yield
 enum
 implements package protected static interface private public
-
 Infinity NaN undefined
 '''.split();    # list of unimplemented keywords (and globals)
 
@@ -127,7 +126,7 @@ def lex(s):
         "Helps segmentify() with segmenting a single line." # segmentifyLine() uses an FSM which looks as follows:
         mode = 'code'; quote = None;                        #
         ans = [''];                                         #           .--> (CODE) <--> STRING
-        for i in xrange(len(s)):                            #
+        for i in range(len(s)):                            #
             if mode == 'code' and quote is None:            # CODE is the start state and the only accepting state.
                 if s[i] in ['"', "'"]:
                     mode = 'string';
@@ -224,7 +223,7 @@ def lex(s):
     def lexS(s):
         "Shaves off quotes and decodes backslash escapes."
         assert s[0] == s[-1] and s[-1] in ['"', "'"];
-        tokens.append(s[1 : -1].decode('string_escape'));
+        tokens.append(s[1 : -1].encode().decode('unicode_escape'));
     
     for seg in segmentify(s):
         if seg.startswith('"') or seg.startswith("'"):
@@ -1402,7 +1401,7 @@ def console(rt=None, semify=False, prompt='LJ> '):       # semify __tries__ to a
     inp = '';                                               #  If you do so, runtime will not be renewed on each call to console();
     while True:
         inp += '\n';
-        try: inp += raw_input(prompt) ;
+        try: inp += input(prompt) ;
         except (EOFError):
             print('');
             return;
