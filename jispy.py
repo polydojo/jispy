@@ -53,22 +53,21 @@ export extends finally import in instanceof let new super
 switch this throw try typeof void with yield
 enum
 implements package protected static interface private public
-
 Infinity NaN undefined
 '''.split();    # list of unimplemented keywords (and globals)
 
 keywords = iKeywords + uKeywords;
 
 sym = makeSymbolTable(addLiterals = True); # true, false, null
-map(sym, iKeywords);
-map(sym, list('()[]!*/%+-><=,;{:}'));
-map(sym, '>= <= === !== && ||'.split());
-map(sym, '+= -='.split());
+list(map(sym, iKeywords));
+list(map(sym, list('()[]!*/%+-><=,;{:}')));
+list(map(sym, '>= <= === !== && ||'.split()));
+list(map(sym, '+= -='.split()));
 # Note: '.' (dot) is not a symbol
 
 badsym = makeSymbolTable(addLiterals = False);
-map(badsym, '== != << >> *= /= %= ++ --'.split());
-map(badsym, uKeywords);
+list(map(badsym, '== != << >> *= /= %= ++ --'.split()));
+list(map(badsym, uKeywords));
 #############################################################
 
 class LJErr(Exception): pass;
@@ -127,7 +126,7 @@ def lex(s):
         "Helps segmentify() with segmenting a single line." # segmentifyLine() uses an FSM which looks as follows:
         mode = 'code'; quote = None;                        #
         ans = [''];                                         #           .--> (CODE) <--> STRING
-        for i in xrange(len(s)):                            #
+        for i in range(len(s)):                            #
             if mode == 'code' and quote is None:            # CODE is the start state and the only accepting state.
                 if s[i] in ['"', "'"]:
                     mode = 'string';
@@ -166,7 +165,7 @@ def lex(s):
         "Helps handleDot() change dots to subscripts."
         if isPropertyName(s):
             toAppend = [sym('['), s, sym(']')];
-            map(tokens.append, toAppend);
+            list(map(tokens.append, toAppend));
         else:
             raise LJSyntaxErr('illegal refinement ' + s);
     
@@ -183,13 +182,13 @@ def lex(s):
                 raise LJSyntaxErr('unexpected token ' + x + poken); # Thus,
             # otherwise...                                          #      poken in [sym('}'), sym(')'), sym(']')]
             splitLi = x[1 : ].split('.');                           #   is not used.
-            map(subscriptify, splitLi);
+            list(map(subscriptify, splitLi));
         else: # if x[0] != '.'
             splitLi = x.split('.');
             baseId = splitLi[0]; # base/first identifier
             if isValidName(baseId):
                 tokens.append(Name(baseId))
-                map(subscriptify, splitLi[1 : ]);
+                list(map(subscriptify, splitLi[1 : ]));
             else:
                 raise LJSyntaxErr('unexpected token ' + baseId);
     
@@ -219,12 +218,12 @@ def lex(s):
         "Tokenizes a non-string, i.e. un-quoted code snippet."
         for tup in spacer:
             code = code.replace(tup[0], tup[1]);
-        map(atomizeNS, code.split());
+        list(map(atomizeNS, code.split()));
         
     def lexS(s):
         "Shaves off quotes and decodes backslash escapes."
         assert s[0] == s[-1] and s[-1] in ['"', "'"];
-        tokens.append(s[1 : -1].decode('string_escape'));
+        tokens.append(s[1 : -1].encode().decode('unicode_escape'));
     
     for seg in segmentify(s):
         if seg.startswith('"') or seg.startswith("'"):
@@ -252,7 +251,7 @@ def gmb(seq, i): # Get Matching (Closing) Bracket
     left = seq[i];
     right = brackets[left];
     count = 0;
-    for j in xrange(i, len(seq), 1):
+    for j in range(i, len(seq), 1):
         if seq[j] == left: count += 1;
         elif seq[j] == right: count -= 1;
         if count == 0: return j;
@@ -338,7 +337,7 @@ def yacc(tokens):
         "Tells functions from rest and parses them."        # Remaining parts in an expression like operators etc.            
         while True:                                            #    are dealt with during interpreting
             #print 'expLi = ', expLi, '\n';
-            funky = map(lambda x: x is sym('function'), expLi);
+            funky = [x is sym('function') for x in expLi];
             #print ; print;
             #print 'expLi = ', expLi;
             #print 'funky = ', funky;
@@ -536,7 +535,7 @@ def yacc(tokens):
         pCond = parseExp(condCl);                            # parsed condition
         pIncrs = parseForAssignments(incrCl);                # only for error checking
         pCode = yacc(codeCl) + pIncrs;# + incrCl + [sym(';')]);            # parsed code; the UNPARSED increment clause is appended
-        map(tree.append, pAsgns);                            # Assignment is placed before while (in our parse tree)
+        list(map(tree.append, pAsgns));                            # Assignment is placed before while (in our parse tree)
         tree.append(['while', pCond, pCode]);                # equivalent while loop
         return rc + 1;
     
@@ -601,7 +600,7 @@ def gmob(li, i): # GetMatchingOpeningBacket. Cousin of gmb()
     right = li[i];
     left = brackets[right];
     count = 0;
-    for j in xrange(i, -1, -1):    # i may be -ive
+    for j in range(i, -1, -1):    # i may be -ive
         if li[j] == right : count += 1;
         elif li[j] == left : count -= 1;
         if count == 0: return j;
@@ -622,7 +621,7 @@ def cloneTree (iTree):
     oTree = [];
     for iNode in iTree:
         if type(iNode) is Function:
-            oNode = Function(*map(cloneTree, [iNode.params, iNode.tree, iNode.iTokens]));
+            oNode = Function(*list(map(cloneTree, [iNode.params, iNode.tree, iNode.iTokens])));
         elif type(iNode) is list:
             oNode = cloneTree(iNode);
         else:
@@ -647,7 +646,7 @@ def makeEnvClass(maxDepth=None): # maxDepth is private
         "Defines a scope/context for execution."
         def __init__(self, params=[], args=[], parent=None):
             if len(params) != len(args): raise Exception();        # internal error
-            self.update(zip(params, args));
+            self.update(list(zip(params, args)));
             self.parent = parent;
             self.isGlobal = (parent is None);
             if self.isGlobal: self.depth = 0;
@@ -745,7 +744,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
             "Substitutes identifier names w/ their values."
             #print 'entering subNames, expLi = ', expLi;
             count = 0; # counts { and }
-            for j in xrange(len(expLi)):
+            for j in range(len(expLi)):
                 tok = expLi[j];
                 if tok is sym('{'): count += 1;               # Keys in objects `{a: "apple"}` are NOT substituted
                 elif tok is sym('}'): count -= 1;
@@ -1006,7 +1005,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
             }[op](a, b);
         
         def checkChaining(expLi, op, j):                        # On Chromium,
-            nonAsso = map(sym, '> < >= <= === !=='.split());    #                 1 === 1 === 1    -->        false
+            nonAsso = list(map(sym, '> < >= <= === !=='.split()));    #                 1 === 1 === 1    -->        false
             if j + 2 >= len(expLi): return;                     # because,
             op2 = expLi[j + 2];                                 #                1 === 1          -->        true
             rawMsg = 'operators %s and %s cannot be chained';   #                true === 1         -->        false
@@ -1030,18 +1029,18 @@ def run(tree, env, maxLoopTime=None, writer=None):
             except (AssertionError, IndexError):
                 raise LJSyntaxErr('unexpected operator ' + op);
             checkChaining(expLi, op, j);                                        
-            indiOps = map(sym, '=== !== && ||'.split());                    
+            indiOps = list(map(sym, '=== !== && ||'.split()));                    
             if op in indiOps:                                            
                 inter = indiBinop(a, op, b);
                 return getRetExpLi(inter);
             # otherwise...                                
             if type(a) == type(b) and type(b) in [str, float]:
-                strNumOps = map(sym, '>= <= > < +'.split());
+                strNumOps = list(map(sym, '>= <= > < +'.split()));
                 if op in strNumOps:
                     inter = strNumBinop(a, op, b);
                     return getRetExpLi(inter);
                 elif type(b) is float:
-                    numOps = map(sym, list('*/%-'));
+                    numOps = list(map(sym, list('*/%-')));
                     assert op in numOps;
                     inter = numBinop(a, op, b);
                     return getRetExpLi(inter);
@@ -1127,7 +1126,7 @@ def run(tree, env, maxLoopTime=None, writer=None):
     
     def runIfLadder(stmt, env):
         "Helps run through an if-ladder."
-        for j in xrange(1, len(stmt), 2):
+        for j in range(1, len(stmt), 2):
             expLi, code = stmt[j], stmt[j+1];
             if isTruthy(eval(expLi, env)):
                 run(code, env, maxLoopTime, writer);
@@ -1243,7 +1242,7 @@ def inbuilts(writer):
     
     def n_keys(dicty):
         "Returns an array of keys in an object `obj`."
-        if type(dicty) is dict: return dicty.keys();
+        if type(dicty) is dict: return list(dicty.keys());
         raise LJTypeErr('%s has no keys()' % n_type(dicty));
         
     def n_del(x, y):
@@ -1374,7 +1373,7 @@ class Runtime(object):
             writer = self.writer if console else None;
             run(tree, env, self.maxLoopTime, writer);
         except LJErr as e:
-            print('%s: %s' % (type(e).__name__[2:] + 'or' , e))
+            print(('%s: %s' % (type(e).__name__[2:] + 'or' , e)))
         except LJJump as e:
             if isa(e, LJReturn):
                 print('SyntaxError: unexpected return statement');
@@ -1402,7 +1401,7 @@ def console(rt=None, semify=False, prompt='LJ> '):       # semify __tries__ to a
     inp = '';                                               #  If you do so, runtime will not be renewed on each call to console();
     while True:
         inp += '\n';
-        try: inp += raw_input(prompt) ;
+        try: inp += eval(input(prompt)) ;
         except (EOFError):
             print('');
             return;
