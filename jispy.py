@@ -1401,7 +1401,7 @@ def console(rt=None, semify=False, prompt='LJ> '):       # semify __tries__ to a
     inp = '';                                               #  If you do so, runtime will not be renewed on each call to console();
     while True:
         inp += '\n';
-        try: inp += eval(input(prompt)) ;
+        try: inp += input(prompt);
         except (EOFError):
             print('');
             return;
